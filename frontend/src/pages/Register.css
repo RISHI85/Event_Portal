@@ -1,0 +1,119 @@
+/* Register page styling aligned with the provided reference layout */
+.register-page { padding: 26px 0 46px; }
+
+.register-split {
+  display: grid;
+  grid-template-columns: 1.05fr 1.25fr; /* left art : right form */
+  gap: 32px;
+}
+
+/* Left Panel */
+.register-left {
+  background: linear-gradient(180deg, #0f766e 0%, #065f46 100%); /* teal */
+  border-radius: 18px;
+  min-height: 560px;
+  padding: 26px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(2,6,23,0.22);
+}
+
+.register-left .illustration { height: 70%; display: flex; align-items: center; justify-content: center; }
+
+/* Simple calendar/character abstract */
+.calendar-art {
+  width: 280px;
+  height: 280px;
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 70% 30%, rgba(255,255,255,0.18), transparent 40%),
+    radial-gradient(circle at 35% 70%, rgba(255,255,255,0.12), transparent 42%),
+    #0ea5e9; /* accent base */
+  box-shadow: inset 0 0 60px rgba(255,255,255,0.12);
+}
+
+.event-chip {
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 12px 28px rgba(2,6,23,0.18);
+}
+
+.event-title { font-weight: 800; font-size: 1rem; margin-bottom: 4px; }
+.event-meta { color: #475569; font-size: 0.92rem; }
+
+/* Right Panel */
+.register-right {
+  background: rgba(255,255,255,0.96);
+  border-radius: 18px;
+  padding: 22px 24px;
+  box-shadow: 0 20px 48px rgba(2,6,23,0.12);
+}
+
+.form-header { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 12px; }
+.form-header .brand { width: 34px; height: 34px; border-radius: 6px; display: none; }
+.form-header h2 { margin: 0; font-size: 1.2rem; font-weight: 800; color: #0f172a; position: relative; }
+.form-header h2::before { content: '\2022'; color: #0f172a; opacity: 0.8; margin-right: 8px; }
+
+.alert-error {
+  background: #fee2e2; color: #7f1d1d; padding: 10px 12px;
+  border: 1px solid #fecaca; border-radius: 8px; margin: 10px 0;
+}
+.alert-warn { color: #b91c1c; margin: 6px 0; }
+
+/* Form */
+.rg-form { margin-top: 6px; }
+.rg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+.rg-grid label { display: flex; flex-direction: column; gap: 6px; font-weight: 700; color: #0f172a; }
+.rg-grid input, .rg-grid select, .member-grid input {
+  appearance: none;
+  background: #ffffff;
+  border: 1px solid rgba(2,6,23,0.10);
+  border-radius: 12px;
+  padding: 11px 12px;
+  outline: none;
+  font-size: 0.96rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    0 1px 2px rgba(2,6,23,0.04);
+}
+.rg-grid small { color: #6b7280; font-weight: 500; }
+
+/* Members */
+.members-block { margin-top: 16px; }
+.block-title { font-weight: 800; margin-bottom: 8px; }
+.member-card { padding: 12px; margin-top: 10px; border-radius: 14px; background: rgba(255,255,255,0.98); }
+.member-title { font-weight: 700; margin-bottom: 8px; }
+.member-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px 12px; }
+.member-grid label { display: flex; flex-direction: column; gap: 6px; }
+
+/* Amount and actions */
+.amount-row { margin-top: 10px; }
+.amount { font-weight: 800; }
+.amount span { color: #6b7280; font-weight: 600; }
+
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+.btn-primary, .btn-secondary { font-weight: 800; border-radius: 12px; padding: 10px 16px; }
+
+/* Card helper reuse */
+.card { box-shadow: 0 12px 30px rgba(2,6,23,0.12); border-radius: 16px; background: #fff; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .register-split { grid-template-columns: 1fr; }
+  .register-left { min-height: 380px; }
+}
+@media (max-width: 720px) {
+  .rg-grid { grid-template-columns: 1fr; }
+  .member-grid { grid-template-columns: 1fr; }
+}
