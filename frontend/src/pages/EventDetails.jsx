@@ -4,6 +4,8 @@ import fetchWithLoading from '../utils/fetcher';
 import useAuthStore from '../store/authStore';
 import Breadcrumb from '../components/Breadcrumb';
 import ShareButtons from '../components/ShareButtons';
+import CountdownTimer from '../components/CountdownTimer';
+import AddToCalendar from '../components/AddToCalendar';
 import './EventDetails.css';
 
 const statusFromDate = (date) => {
@@ -122,14 +124,22 @@ export default function EventDetails() {
     <section className="event-details container">
       <Breadcrumb items={breadcrumbItems} />
       
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div></div>
-        <ShareButtons 
-          url={window.location.href}
-          title={event.name}
-          description={event.description}
-        />
+        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+          <AddToCalendar event={event} />
+          <ShareButtons 
+            url={window.location.href}
+            title={event.name}
+            description={event.description}
+          />
+        </div>
       </div>
+
+      {/* Countdown Timer for upcoming events */}
+      {event.date && new Date(event.date) > new Date() && (
+        <CountdownTimer targetDate={event.date} />
+      )}
 
       <div className="ed-grid">
         <div className="ed-media">

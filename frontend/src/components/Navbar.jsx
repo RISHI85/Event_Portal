@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
 import api from '../utils/api';
 import fetchWithLoading from '../utils/fetcher';
+import SearchBar from './SearchBar';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuthStore();
@@ -132,6 +133,7 @@ const Navbar = () => {
         {isAuthenticated && user?.role !== 'admin' && (
           <Link className="nav-link" to="/my-events">My Events</Link>
         )}
+        <SearchBar />
         {!(isAuthenticated && user?.role === 'admin') && (
           <div
             className="dropdown events-dropdown"
