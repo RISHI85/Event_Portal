@@ -4,6 +4,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
+const DepartmentChangeRequest = require('../models/DepartmentChangeRequest');
 const { auth } = require('../middleware/auth'); // Import auth middleware
 const sendEmail = require('../utils/sendEmail'); // Import email utility
 const crypto = require('crypto');
@@ -22,7 +23,7 @@ const isAdminEmail = (email) => {
 // @desc Register a new user
 // @access Public
 router.post('/register', async (req, res) => {
-  const { email, password, gender, year, name = '', phone = '' } = req.body;
+  const { email, password, gender, year, department, name = '', phone = '' } = req.body;
   
   try {
     let user = await User.findOne({ email });
@@ -44,6 +45,7 @@ router.post('/register', async (req, res) => {
       phone,
       gender,
       year,
+      department,
       role,
       otp,
       otpExpires
@@ -125,7 +127,8 @@ router.post('/verify-otp', async (req, res) => {
         role: user.role,
         phone: user.phone || '',
         gender: user.gender,
-        year: user.year
+        year: user.year,
+        department: user.department
       }
     });
   } catch (error) {
@@ -257,7 +260,7 @@ router.get('/me', auth, async (req, res) => {
 // @access Private
 router.put('/me', auth, async (req, res) => {
   try {
-    const { email, gender, year, name, phone, newPassword, currentPassword } = req.body;
+    const { email, gender, year, department, name, phone, location, about, skills, newPassword, currentPassword } = req.body;
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ msg: 'User not found' });
@@ -266,8 +269,12 @@ router.put('/me', auth, async (req, res) => {
     if (email) user.email = email.toLowerCase().trim();
     if (gender) user.gender = gender;
     if (typeof year !== 'undefined') user.year = year;
+    if (typeof department !== 'undefined') user.department = String(department || '').trim();
     if (typeof name !== 'undefined') user.name = String(name || '').trim();
     if (typeof phone !== 'undefined') user.phone = String(phone || '').trim();
+    if (typeof location !== 'undefined') user.location = String(location || '').trim();
+    if (typeof about !== 'undefined') user.about = String(about || '').trim();
+    if (Array.isArray(skills)) user.skills = skills;
 
     // Handle password change if requested
     if (newPassword) {
@@ -298,6 +305,181 @@ router.get('/admins', async (req, res) => {
     res.json({ count: admins.length, admins });
   } catch (error) {
     console.error('List admins error:', error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// @route GET /api/auth/my-department-request
+// @desc Get current user's department change request
+// @access Private
+router.get('/my-department-request', auth, async (req, res) => {
+  try {
+    const request = await DepartmentChangeRequest.findOne({ userId: req.user.id })
+      .sort({ createdAt: -1 }); // Get most recent request
+
+    if (!request) {
+      return res.status(404).json({ msg: 'No request found' });
+    }
+
+    res.json(request);
+  } catch (error) {
+    console.error('Get my department request error:', error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// @route POST /api/auth/request-department-change
+// @desc Submit a department change request
+// @access Private
+router.post('/request-department-change', auth, async (req, res) => {
+  try {
+    const { reason } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ msg: 'Reason is required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    if (!user.department) {
+      return res.status(400).json({ msg: 'You do not have a department set yet' });
+    }
+
+    // Check if there's already a pending request
+    const existingRequest = await DepartmentChangeRequest.findOne({
+      userId: req.user.id,
+      status: 'pending'
+    });
+
+    if (existingRequest) {
+      return res.status(400).json({ msg: 'You already have a pending department change request' });
+    }
+
+    // For now, we'll let the user specify the requested department in the reason
+    // Or we can add a field for it. Let's keep it simple and extract from reason
+    const departmentChangeRequest = new DepartmentChangeRequest({
+      userId: req.user.id,
+      currentDepartment: user.department,
+      requestedDepartment: 'To be determined', // Admin will see the reason
+      reason: reason.trim(),
+      status: 'pending'
+    });
+
+    await departmentChangeRequest.save();
+
+    res.json({ 
+      msg: 'Department change request submitted successfully',
+      request: departmentChangeRequest
+    });
+  } catch (error) {
+    console.error('Department change request error:', error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// @route GET /api/auth/department-change-requests
+// @desc Get all department change requests (admin only)
+// @access Private (Admin)
+router.get('/department-change-requests', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied. Admin only.' });
+    }
+
+    const requests = await DepartmentChangeRequest.find()
+      .populate('userId', 'name email department')
+      .sort({ createdAt: -1 });
+
+    res.json(requests);
+  } catch (error) {
+    console.error('Get department change requests error:', error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// @route POST /api/auth/department-change-requests/:requestId/approve
+// @desc Approve a department change request
+// @access Private (Admin)
+router.post('/department-change-requests/:requestId/approve', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied. Admin only.' });
+    }
+
+    const { userId, newDepartment } = req.body;
+    const { requestId } = req.params;
+
+    const request = await DepartmentChangeRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ msg: 'Request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ msg: 'Request has already been processed' });
+    }
+
+    // Update user's department
+    const targetUser = await User.findById(userId);
+    if (!targetUser) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    const actualNewDepartment = newDepartment || request.requestedDepartment;
+    targetUser.department = actualNewDepartment;
+    await targetUser.save();
+
+    // Update request status and store the actual department that was approved
+    request.status = 'approved';
+    request.requestedDepartment = actualNewDepartment;
+    await request.save();
+
+    res.json({ 
+      msg: 'Department change request approved',
+      request,
+      user: targetUser
+    });
+  } catch (error) {
+    console.error('Approve department change error:', error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// @route POST /api/auth/department-change-requests/:requestId/reject
+// @desc Reject a department change request
+// @access Private (Admin)
+router.post('/department-change-requests/:requestId/reject', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ msg: 'Access denied. Admin only.' });
+    }
+
+    const { requestId } = req.params;
+
+    const request = await DepartmentChangeRequest.findById(requestId);
+    if (!request) {
+      return res.status(404).json({ msg: 'Request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({ msg: 'Request has already been processed' });
+    }
+
+    // Update request status
+    request.status = 'rejected';
+    await request.save();
+
+    res.json({ 
+      msg: 'Department change request rejected',
+      request
+    });
+  } catch (error) {
+    console.error('Reject department change error:', error);
     res.status(500).json({ msg: 'Server error' });
   }
 });

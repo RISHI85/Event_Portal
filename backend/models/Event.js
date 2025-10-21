@@ -41,6 +41,17 @@ const eventSchema = new mongoose.Schema({
     default: null,
     trim: true
   },
+  // Which departments are eligible to participate in this event (optional)
+  eligibleDepartments: {
+    type: [String],
+    default: [],
+  },
+  // Event categories (Technical, Coding, Robotics, Innovation, Group Events)
+  categories: {
+    type: [String],
+    default: [],
+    enum: ['Technical', 'Coding', 'Robotics', 'Innovation', 'Group Events'],
+  },
   registrationDetails: {
     feePerHead: {
       type: Number,

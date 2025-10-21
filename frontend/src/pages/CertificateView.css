@@ -1,0 +1,73 @@
+/* Certificate View Page - Clean PDF-like View */
+.certificate-view-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #e0f2f1 0%, #f0fdfa 100%);
+  padding: 40px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.certificate-view-container {
+  max-width: 1300px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* Override certificate template buttons to show them */
+.certificate-view-page .form-actions {
+  display: flex !important;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.certificate-view-page .btn-primary,
+.certificate-view-page .btn-secondary {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 32px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.certificate-view-page .btn-primary {
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+  color: white;
+  box-shadow: 0 4px 16px rgba(20, 184, 166, 0.3);
+}
+
+.certificate-view-page .btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(20, 184, 166, 0.4);
+}
+
+.certificate-view-page .btn-secondary {
+  background: white;
+  color: #14b8a6;
+  border: 2px solid #14b8a6;
+}
+
+.certificate-view-page .btn-secondary:hover {
+  background: #14b8a6;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(20, 184, 166, 0.3);
+}
+
+/* Print styles */
+@media print {
+  .certificate-view-page {
+    background: white;
+    padding: 0;
+  }
+
+  .form-actions {
+    display: none !important;
+  }
+}

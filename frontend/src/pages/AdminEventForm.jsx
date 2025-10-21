@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../utils/api';
 import CertificateTemplate from '../components/CertificateTemplate';
+import './AdminEventForm.css';
 
 const useQuery = () => new URLSearchParams(useLocation().search);
 
@@ -16,6 +17,8 @@ const empty = {
   isMainEvent: true,
   parentEvent: '',
   department: '',
+  eligibleDepartments: [],
+  categories: [],
   // New fields
   multiDay: false,
   numberOfDays: 1,
@@ -46,6 +49,8 @@ const AdminEventForm = () => {
   const [mainEvents, setMainEvents] = useState([]);
   const [basicRegistrationEnabled, setBasicRegistrationEnabled] = useState(false);
   const [basicRegistrationAmount, setBasicRegistrationAmount] = useState(0);
+  // Separate UI-only section for Student Coordinators; merged on submit
+  const [studentContacts, setStudentContacts] = useState([{ name: '', email: '', phone: '' }]);
 
   // Load main events for parent selection when adding sub-event
   useEffect(() => {
@@ -78,6 +83,8 @@ const AdminEventForm = () => {
           isMainEvent: data.isMainEvent,
           parentEvent: data.parentEvent?._id || '',
           department: data.department || '',
+          eligibleDepartments: Array.isArray(data.eligibleDepartments) ? data.eligibleDepartments : [],
+          categories: Array.isArray(data.categories) ? data.categories : [],
           multiDay: !!data.multiDay,
           numberOfDays: data.numberOfDays || 1,
           schedule: Array.isArray(data.schedule) && data.schedule.length > 0 ? data.schedule.map(s=>({
@@ -98,6 +105,8 @@ const AdminEventForm = () => {
           certificateOrganizer: data.certificateOrganizer || '',
           certificateAwardText: data.certificateAwardText || 'Certificate of Participation',
         });
+        // For edit mode, prefill student contacts as empty section (not stored separately in backend)
+        setStudentContacts([{ name: '', email: '', phone: '' }]);
         setBasicRegistrationEnabled(!!data.basicRegistrationEnabled);
         setBasicRegistrationAmount(Number(data.basicRegistrationAmount || 0));
       } catch (e) {
@@ -139,6 +148,13 @@ const AdminEventForm = () => {
     setSaving(true);
     try {
       const payload = { ...form };
+      // Merge faculty(adminContacts) and studentContacts into a single adminContacts array for backend
+      const clean = (c) => (c && (c.name || c.email || c.phone));
+      const mergedContacts = [
+        ...((form.adminContacts || []).filter(clean)),
+        ...((studentContacts || []).filter(clean)),
+      ];
+      payload.adminContacts = mergedContacts.length ? mergedContacts : [{ name: '', email: '', phone: '' }];
       payload.registrationDetails = {
         ...payload.registrationDetails,
         feePerHead: Number(payload.registrationDetails.feePerHead || 0),
@@ -202,120 +218,173 @@ const AdminEventForm = () => {
   }, [form.isMainEvent, form.parentEvent]);
 
   return (
-    <div className="container">
-      <div className="card" style={{ padding: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ margin: 0 }}>{id ? 'Edit Event' : 'Add Event'}</h2>
-          <button className="nav-link" onClick={() => navigate('/admin')}>← Back</button>
+    <div className="admin-form-wrap">
+      <div className="admin-form-header">
+        <div style={{ padding: '0 24px' }}>
+          <button className="admin-form-back" onClick={() => navigate('/admin')}>← Back to Dashboard</button>
+          <h2 className="admin-form-title">{id ? 'Edit Event' : 'Create New Event'}</h2>
+          <p className="admin-form-subtitle">
+            {id ? 'Update event details and configuration' : 'Fill in the details below to create a new event'}
+          </p>
         </div>
+      </div>
 
-        <form className="form-grid" onSubmit={onSubmit}>
-          <label>Event Name</label>
-          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
+      <form className="admin-form" onSubmit={onSubmit}>
+        <div className="admin-form-left">
+          {/* Basic Information Card */}
+          <fieldset className="card-like">
+            <legend>📋 Basic Information</legend>
+            
+            <label>Event Name</label>
+            <input placeholder="Enter event name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
 
-          <label>Description</label>
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+            <label>Description (Point-wise)</label>
+            <textarea placeholder="Enter description with bullet points • Point 1 • Point 2 • Point 3" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} />
+            <div className="muted">Use bullet points for better readability</div>
 
-          <label>Date</label>
-          <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required={!form.isMainEvent} />
+            <div className="row-2col">
+              <div>
+                <label>Date</label>
+                <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required={!form.isMainEvent} />
+              </div>
+              <div>
+                <label>Time</label>
+                <input placeholder="e.g., 10:00 AM - 12:00 PM" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required={!form.isMainEvent} />
+              </div>
+            </div>
 
-          <label>Time</label>
-          <input placeholder="e.g., 10:00 AM - 12:00 PM" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} required={!form.isMainEvent} />
+            <label>Location</label>
+            <input placeholder="Enter location" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required={!form.isMainEvent} />
+            
+            {/* Multi-day event controls */}
+            <label style={{ display:'flex', alignItems:'center', gap:8, marginTop: 16 }}>
+              <input type="checkbox" checked={!!form.multiDay} onChange={(e)=>{
+                const checked = e.target.checked;
+                setForm((f)=>({
+                  ...f,
+                  multiDay: checked,
+                  numberOfDays: checked ? Math.max(1, Number(f.numberOfDays || 2)) : 1,
+                  schedule: checked ? (f.schedule && f.schedule.length>0 ? f.schedule : [{ date: f.date, time: f.time }]) : [{ date: f.date, time: f.time }]
+                }));
+              }} />
+              Multi-day event?
+            </label>
+            {form.multiDay && (
+              <>
+                <label>Number of Days</label>
+                <input type="number" min={1} value={form.numberOfDays}
+                       onChange={(e)=>{
+                         const n = Math.max(1, Number(e.target.value || 1));
+                         setForm((f)=>{
+                           const sched = Array.isArray(f.schedule) ? [...f.schedule] : [];
+                           while (sched.length < n) sched.push({ date: '', time: '' });
+                           if (sched.length > n) sched.length = n;
+                           return { ...f, numberOfDays: n, schedule: sched };
+                         });
+                       }} />
+                {Array.from({ length: Math.max(1, Number(form.numberOfDays || 1)) }).map((_, i) => (
+                  <div key={`day-${i}`} className="form-grid" style={{border:'1px solid #eee', padding:10, borderRadius:8}}>
+                    <label>Day {i+1} Date
+                      <input type="date" value={form.schedule?.[i]?.date || ''}
+                             onChange={(e)=>{
+                               const v = e.target.value;
+                               setForm((f)=>{
+                                 const sched = Array.isArray(f.schedule) ? [...f.schedule] : [];
+                                 while (sched.length <= i) sched.push({ date:'', time:'' });
+                                 sched[i] = { ...sched[i], date: v };
+                                 return { ...f, schedule: sched };
+                               });
+                             }} />
+                    </label>
+                    <label>Day {i+1} Time
+                      <input value={form.schedule?.[i]?.time || ''} placeholder="e.g., 10:00 AM - 12:00 PM"
+                             onChange={(e)=>{
+                               const v = e.target.value;
+                               setForm((f)=>{
+                                 const sched = Array.isArray(f.schedule) ? [...f.schedule] : [];
+                                 while (sched.length <= i) sched.push({ date:'', time:'' });
+                                 sched[i] = { ...sched[i], time: v };
+                                 return { ...f, schedule: sched };
+                               });
+                             }} />
+                    </label>
+                  </div>
+                ))}
+              </>
+            )}
+          </fieldset>
 
-          {/* Multi-day event controls */}
-          <label style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <input type="checkbox" checked={!!form.multiDay} onChange={(e)=>{
-              const checked = e.target.checked;
-              setForm((f)=>({
-                ...f,
-                multiDay: checked,
-                numberOfDays: checked ? Math.max(1, Number(f.numberOfDays || 2)) : 1,
-                schedule: checked ? (f.schedule && f.schedule.length>0 ? f.schedule : [{ date: f.date, time: f.time }]) : [{ date: f.date, time: f.time }]
-              }));
-            }} />
-            Multi-day event?
-          </label>
-          {form.multiDay && (
-            <>
-              <label>Number of Days</label>
-              <input type="number" min={1} value={form.numberOfDays}
-                     onChange={(e)=>{
-                       const n = Math.max(1, Number(e.target.value || 1));
-                       setForm((f)=>{
-                         const sched = Array.isArray(f.schedule) ? [...f.schedule] : [];
-                         while (sched.length < n) sched.push({ date: '', time: '' });
-                         if (sched.length > n) sched.length = n;
-                         return { ...f, numberOfDays: n, schedule: sched };
-                       });
-                     }} />
-              {Array.from({ length: Math.max(1, Number(form.numberOfDays || 1)) }).map((_, i) => (
-                <div key={`day-${i}`} className="form-grid" style={{border:'1px solid #eee', padding:10, borderRadius:8}}>
-                  <label>Day {i+1} Date
-                    <input type="date" value={form.schedule?.[i]?.date || ''}
-                           onChange={(e)=>{
-                             const v = e.target.value;
-                             setForm((f)=>{
-                               const sched = Array.isArray(f.schedule) ? [...f.schedule] : [];
-                               while (sched.length <= i) sched.push({ date:'', time:'' });
-                               sched[i] = { ...sched[i], date: v };
-                               return { ...f, schedule: sched };
-                             });
-                           }} />
-                  </label>
-                  <label>Day {i+1} Time
-                    <input value={form.schedule?.[i]?.time || ''} placeholder="e.g., 10:00 AM - 12:00 PM"
-                           onChange={(e)=>{
-                             const v = e.target.value;
-                             setForm((f)=>{
-                               const sched = Array.isArray(f.schedule) ? [...f.schedule] : [];
-                               while (sched.length <= i) sched.push({ date:'', time:'' });
-                               sched[i] = { ...sched[i], time: v };
-                               return { ...f, schedule: sched };
-                             });
-                           }} />
-                  </label>
-                </div>
-              ))}
-            </>
-          )}
-
-          <label>Location</label>
-          <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} required={!form.isMainEvent} />
-
-          {/* Admin Contacts */}
-          <fieldset style={{ border: '1px solid #eee', padding: 10, borderRadius: 8, marginTop: 10 }}>
-            <legend>Admin Contacts (Total: {Array.isArray(form.adminContacts) ? form.adminContacts.length : 0})</legend>
+          {/* Faculty Coordinators */}
+          <fieldset className="card-like">
+            {(() => { const clean=(x)=>x&&(x.name||x.email||x.phone); const count=(form.adminContacts||[]).filter(clean).length; return (<legend>👥 Faculty Coordinators (Total: {count})</legend>); })()}
             {(form.adminContacts || []).map((c, i) => (
-              <div key={`adm-${i}`} className="form-grid" style={{ gridTemplateColumns: '1fr 1fr 1fr auto', alignItems: 'end' }}>
+              <div key={`adm-${i}`} className="form-grid coordinator-row">
                 <label>Name
-                  <input value={c.name} onChange={(e)=>{
+                  <input placeholder="Name" value={c.name} onChange={(e)=>{
                     const v = e.target.value; setForm(f=>{ const arr=[...(f.adminContacts||[])]; arr[i]={...arr[i], name:v}; return {...f, adminContacts:arr}; });
                   }} />
                 </label>
                 <label>Email
-                  <input type="email" value={c.email} onChange={(e)=>{
+                  <input placeholder="Email" type="email" value={c.email} onChange={(e)=>{
                     const v = e.target.value; setForm(f=>{ const arr=[...(f.adminContacts||[])]; arr[i]={...arr[i], email:v}; return {...f, adminContacts:arr}; });
                   }} />
                 </label>
                 <label>Phone
-                  <input value={c.phone} onChange={(e)=>{
+                  <input placeholder="Phone" value={c.phone} onChange={(e)=>{
                     const v = e.target.value; setForm(f=>{ const arr=[...(f.adminContacts||[])]; arr[i]={...arr[i], phone:v}; return {...f, adminContacts:arr}; });
                   }} />
                 </label>
-                <button type="button" className="btn-secondary" onClick={()=>{
-                  setForm(f=>{ const arr=[...(f.adminContacts||[])]; arr.splice(i,1); return {...f, adminContacts: arr.length?arr:[{name:'',email:'',phone:''}]}; });
-                }}>Remove</button>
+                {i === 0 ? (
+                  <button type="button" className="btn-secondary" onClick={()=>{
+                    setForm(f=>({ ...f, adminContacts: [...(f.adminContacts||[]), { name:'', email:'', phone:'' }] }));
+                  }}>+ Add</button>
+                ) : (
+                  <button type="button" className="btn-secondary" onClick={()=>{
+                    setForm(f=>{ const arr=[...(f.adminContacts||[])]; arr.splice(i,1); return {...f, adminContacts: arr.length?arr:[{name:'',email:'',phone:''}]}; });
+                  }}>Remove</button>
+                )}
               </div>
             ))}
-            <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
-              <button type="button" className="btn-primary" onClick={()=>{
-                setForm(f=>({ ...f, adminContacts: [...(f.adminContacts||[]), { name:'', email:'', phone:'' }] }));
-              }}>Add Admin Contact</button>
-            </div>
           </fieldset>
 
-          <label>Event Image</label>
-          <div>
+          {/* Student Coordinators (UI only; merged into adminContacts on submit) */}
+          <fieldset className="card-like">
+            {(() => { const clean=(x)=>x&&(x.name||x.email||x.phone); const count=(studentContacts||[]).filter(clean).length; return (<legend>🎓 Student Coordinators (Total: {count})</legend>); })()}
+            {(studentContacts || []).map((c, i) => (
+              <div key={`stu-${i}`} className="form-grid coordinator-row">
+                <label>Name
+                  <input placeholder="Name" value={c.name} onChange={(e)=>{
+                    const v = e.target.value; setStudentContacts(arr=>{ const a=[...arr]; a[i]={...a[i], name:v}; return a; });
+                  }} />
+                </label>
+                <label>Email
+                  <input placeholder="Email" type="email" value={c.email} onChange={(e)=>{
+                    const v = e.target.value; setStudentContacts(arr=>{ const a=[...arr]; a[i]={...a[i], email:v}; return a; });
+                  }} />
+                </label>
+                <label>Phone
+                  <input placeholder="Phone" value={c.phone} onChange={(e)=>{
+                    const v = e.target.value; setStudentContacts(arr=>{ const a=[...arr]; a[i]={...a[i], phone:v}; return a; });
+                  }} />
+                </label>
+                {i === 0 ? (
+                  <button type="button" className="btn-secondary" onClick={()=>{
+                    setStudentContacts(arr=>[...arr, { name:'', email:'', phone:'' }]);
+                  }}>+ Add</button>
+                ) : (
+                  <button type="button" className="btn-secondary" onClick={()=>{
+                    setStudentContacts(arr=>{ const a=[...arr]; a.splice(i,1); return a.length?a:[{name:'',email:'',phone:''}]; });
+                  }}>Remove</button>
+                )}
+              </div>
+            ))}
+          </fieldset>
+
+          {/* Event Image Card */}
+          <fieldset className="card-like">
+            <legend>🖼️ Event Image</legend>
+            
+            <label>Choose Image</label>
             <input
               type="file"
               accept="image/*"
@@ -384,10 +453,10 @@ const AdminEventForm = () => {
                 </button>
               )}
             </div>
-          </div>
-          {form.imageUrl && (
-            <div style={{ marginTop: '12px' }}>
-              <img
+            
+            {form.imageUrl && (
+              <div style={{ marginTop: '12px' }}>
+                <img
                 src={form.imageUrl}
                 alt="preview"
                 style={{ 
@@ -410,53 +479,9 @@ const AdminEventForm = () => {
                 Image Preview
               </div>
             </div>
-          )}
-
-          {/* Certificate Template Settings */}
-          <fieldset style={{ border: '1px solid #eee', padding: 10, borderRadius: 8, marginTop: 10 }}>
-            <legend>Certificate Template</legend>
-            <label>Template Background URL (optional)</label>
-            <input
-              placeholder="e.g., https://.../certificate-bg.png (or leave empty to use default)"
-              value={form.certificateTemplateUrl}
-              onChange={(e) => setForm({ ...form, certificateTemplateUrl: e.target.value })}
-            />
-
-            <label>Organizer / Signatory (optional)</label>
-            <input
-              placeholder="e.g., Event Coordinator"
-              value={form.certificateOrganizer}
-              onChange={(e) => setForm({ ...form, certificateOrganizer: e.target.value })}
-            />
-
-            <label>Award Title</label>
-            <input
-              placeholder="Certificate of Participation"
-              value={form.certificateAwardText}
-              onChange={(e) => setForm({ ...form, certificateAwardText: e.target.value })}
-            />
-
-            <div className="card" style={{ padding: 12, marginTop: 12 }}>
-              <div className="muted" style={{ marginBottom: 8 }}>Template Preview</div>
-              <CertificateTemplate
-                participantName={'John Doe'}
-                eventName={form.name || 'Event Name'}
-                dateText={form.date ? new Date(form.date).toLocaleDateString() : ''}
-                organizerText={form.certificateOrganizer || ''}
-                awardText={form.certificateAwardText || 'Certificate of Participation'}
-                accentColor={'#111827'}
-                primaryColor={'#2563EB'}
-                bgPattern={form.certificateTemplateUrl || ''}
-                issuerName={'GMRIT'}
-                logoUrl={form.imageUrl || ''}
-                showSeal={true}
-                sealSize={90}
-                sealText={'Official'}
-                downloadBaseName={'template-preview'}
-                showActions={false}
-              />
-            </div>
+            )}
           </fieldset>
+
 
           <label>Event Type</label>
           <select
@@ -491,14 +516,75 @@ const AdminEventForm = () => {
             </>
           )}
 
-          <label>Department (optional for department events)</label>
-          <input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+          <label>Department Conducting (Optional)</label>
+          <input placeholder="Enter department name if specific" value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} />
+          <div className="muted">Leave empty if not department-specific</div>
+
+          {/* Eligible Departments visual-only block */}
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontWeight: 800 }}>Eligible Departments to Participate</div>
+            <div className="muted" style={{ marginBottom: 8 }}>Select which departments can participate in this event</div>
+            {(() => {
+              const all = ['CSE','IT','ECE','MECH','CIVIL','EEE'];
+              const toggle = (dept) => {
+                setForm((f)=>{
+                  const set = new Set(f.eligibleDepartments || []);
+                  if (set.has(dept)) set.delete(dept); else set.add(dept);
+                  return { ...f, eligibleDepartments: Array.from(set) };
+                });
+              };
+              return (
+                <div className="checkbox-grid">
+                  {all.map((d)=> (
+                    <label key={d} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={(form.eligibleDepartments || []).includes(d)}
+                        onChange={()=> toggle(d)}
+                      />
+                      {d}
+                    </label>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Event Categories */}
+          <div style={{ marginTop: 18 }}>
+            <div style={{ fontWeight: 800 }}>Event Categories</div>
+            <div className="muted" style={{ marginBottom: 8 }}>Select categories that best describe this event</div>
+            {(() => {
+              const allCategories = ['Technical', 'Coding', 'Robotics', 'Innovation', 'Group Events'];
+              const toggleCategory = (category) => {
+                setForm((f)=>{
+                  const set = new Set(f.categories || []);
+                  if (set.has(category)) set.delete(category); else set.add(category);
+                  return { ...f, categories: Array.from(set) };
+                });
+              };
+              return (
+                <div className="checkbox-grid">
+                  {allCategories.map((cat)=> (
+                    <label key={cat} className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        checked={(form.categories || []).includes(cat)}
+                        onChange={()=> toggleCategory(cat)}
+                      />
+                      {cat}
+                    </label>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
 
           {/* Basic Registration (main events) */}
           {eventType === 'main' && (
-            <fieldset style={{ border: '1px solid #eee', padding: 10, borderRadius: 8, marginTop: 10 }}>
+            <fieldset className="card-like" style={{ marginTop: 10 }}>
               <legend>Basic Registration (Main Event)</legend>
-              <label style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <label className="checkbox-label">
                 <input
                   type="checkbox"
                   checked={basicRegistrationEnabled}
@@ -520,7 +606,7 @@ const AdminEventForm = () => {
             </fieldset>
           )}
 
-          <fieldset style={{ border: '1px solid #eee', padding: 10, borderRadius: 8, marginTop: 10 }}>
+          <fieldset className="card-like" style={{ marginTop: 10 }}>
             <legend>Registration Details</legend>
             <label>Total Fee (per team / entry)</label>
             <input
@@ -575,7 +661,7 @@ const AdminEventForm = () => {
 
           {/* Team Size configuration when team participation is enabled */}
           {form.registrationDetails.teamParticipation && (
-            <fieldset style={{ border: '1px solid #eee', padding: 10, borderRadius: 8, marginTop: 10 }}>
+            <fieldset className="card-like" style={{ marginTop: 10 }}>
               <legend>Team Size</legend>
               <label>Type</label>
               <select
@@ -670,37 +756,71 @@ const AdminEventForm = () => {
               )}
             </fieldset>
           )}
+        </div>
 
-          
+        {/* Right Column - Certificate Preview */}
+        <div className="admin-form-right">
+          <fieldset className="card-like">
+            <legend>🏆 Certificate Template</legend>
+            
+            <label>Template Background URL (optional)</label>
+            <input
+              placeholder="e.g., https://.../certificate-bg.png"
+              value={form.certificateTemplateUrl}
+              onChange={(e) => setForm({ ...form, certificateTemplateUrl: e.target.value })}
+            />
+
+            <label>Organizer / Signatory (optional)</label>
+            <input
+              placeholder="e.g., Event Coordinator"
+              value={form.certificateOrganizer}
+              onChange={(e) => setForm({ ...form, certificateOrganizer: e.target.value })}
+            />
+
+            <label>Award Title</label>
+            <input
+              placeholder="Certificate of Participation"
+              value={form.certificateAwardText}
+              onChange={(e) => setForm({ ...form, certificateAwardText: e.target.value })}
+            />
+
+            <div style={{ marginTop: 20 }}>
+              <div className="muted" style={{ marginBottom: 12, fontWeight: 600 }}>Certificate Preview</div>
+              <CertificateTemplate
+                participantName={'John Doe'}
+                eventName={form.name || 'Event Name'}
+                dateText={form.date ? new Date(form.date).toLocaleDateString() : ''}
+                organizerText={form.certificateOrganizer || ''}
+                awardText={form.certificateAwardText || 'Certificate of Participation'}
+                accentColor={'#111827'}
+                primaryColor={'#14b8a6'}
+                bgPattern={form.certificateTemplateUrl || ''}
+                issuerName={'GMRIT'}
+                logoUrl={form.imageUrl || ''}
+                showSeal={true}
+                sealSize={90}
+                sealText={'Official'}
+                downloadBaseName={'template-preview'}
+                showActions={false}
+              />
+            </div>
+          </fieldset>
+        </div>
+
         {/* Fixed bottom action bar (always visible) */}
-        <div
-          style={{
-            position: 'fixed',
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: '#ffffffcc',
-            backdropFilter: 'saturate(180%) blur(6px)',
-            padding: '10px 16px',
-            borderTop: '1px solid #eee',
-            display: 'flex',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div style={{ width: '100%', maxWidth: 1100, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        <div className="fixed-actions">
+          <div className="fixed-actions-inner">
             <button className="btn-secondary" type="button" onClick={() => navigate('/admin')}>
               Cancel
             </button>
             <button className="btn-primary" type="submit" disabled={saving}>
-              {id ? 'Update Event' : 'Add Event'}
+              {id ? 'Update Event' : 'Create Event'}
             </button>
           </div>
         </div>
         {/* Spacer so fixed bar doesn't cover inputs at the very bottom */}
         <div style={{ height: 72 }} />
       </form>
-      </div>
     </div>
   );
 };

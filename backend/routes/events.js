@@ -164,6 +164,8 @@ router.post('/', adminAuth, async (req, res) => {
       isMainEvent,
       parentEvent,
       department,
+      eligibleDepartments,
+      categories,
       registrationDetails,
       adminContacts,
       certificateTemplateUrl,
@@ -190,6 +192,8 @@ router.post('/', adminAuth, async (req, res) => {
       isMainEvent: isMain,
       parentEvent: parent,
       department,
+      eligibleDepartments: Array.isArray(eligibleDepartments) ? eligibleDepartments : [],
+      categories: Array.isArray(categories) ? categories : [],
       registrationDetails,
       adminContacts: Array.isArray(adminContacts) ? adminContacts : [],
       certificateTemplateUrl: certificateTemplateUrl || '',
@@ -225,6 +229,8 @@ router.put('/:id', adminAuth, async (req, res) => {
       isMainEvent,
       parentEvent,
       department,
+      eligibleDepartments,
+      categories,
       registrationDetails,
       adminContacts,
       certificateTemplateUrl,
@@ -257,6 +263,8 @@ router.put('/:id', adminAuth, async (req, res) => {
     if (imageUrl !== undefined) updateDoc.$set.imageUrl = imageUrl;
     if (department !== undefined) updateDoc.$set.department = department;
     if (registrationDetails !== undefined) updateDoc.$set.registrationDetails = registrationDetails;
+    if (eligibleDepartments !== undefined && Array.isArray(eligibleDepartments)) updateDoc.$set.eligibleDepartments = eligibleDepartments;
+    if (categories !== undefined && Array.isArray(categories)) updateDoc.$set.categories = categories;
     if (Array.isArray(adminContacts)) updateDoc.$set.adminContacts = adminContacts;
     if (certificateTemplateUrl !== undefined) updateDoc.$set.certificateTemplateUrl = certificateTemplateUrl ?? '';
     if (certificateOrganizer !== undefined) updateDoc.$set.certificateOrganizer = certificateOrganizer ?? '';

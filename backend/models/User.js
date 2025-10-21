@@ -38,6 +38,33 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null
   }, // NEW: Year of student (e.g., "First Year", "Second Year")
+  department: {
+    type: String,
+    default: null,
+    trim: true
+  }, // NEW: Department field (e.g., "CSE", "IT", "ECE")
+  location: {
+    type: String,
+    default: '',
+    trim: true
+  }, // Location field
+  about: {
+    type: String,
+    default: '',
+    trim: true
+  }, // About/bio field
+  skills: {
+    type: [String],
+    default: []
+  }, // Professional skills array
+  achievements: {
+    type: [{
+      title: String,
+      description: String,
+      date: String
+    }],
+    default: []
+  }, // Achievements array
   otp: {
     type: String,
     default: null

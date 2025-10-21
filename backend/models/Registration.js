@@ -66,6 +66,15 @@ const registrationSchema = new mongoose.Schema({
     type: String,
     default: null
   }, // NEW: Stripe Payment ID (from webhook)
+  stripe_session_id: {
+    type: String,
+    default: null
+  }, // Stripe Checkout Session ID
+  registrationType: {
+    type: String,
+    enum: ['internal', 'external'],
+    required: true
+  }, // Internal (@gmrit.edu.in) or External
   registeredAt: {
     type: Date,
     default: Date.now

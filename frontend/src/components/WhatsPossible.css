@@ -1,0 +1,69 @@
+.whats-new-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px}
+@media(max-width:1024px){.whats-new-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.whats-new-grid{grid-template-columns:1fr}}
+
+.wn-card{
+  background:#ffffff;
+  border-radius:18px;
+  border:1.5px solid #e5e7eb;
+  box-shadow:0 6px 18px rgba(0,0,0,.04);
+  padding:28px;
+  transition:all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  min-height:220px;
+  position:relative;
+  overflow:hidden;
+}
+
+.wn-card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, rgba(254, 252, 232, 0.4) 0%, rgba(254, 249, 195, 0.6) 100%);
+  opacity:0;
+  transition:opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index:0;
+}
+
+.wn-card:hover::before{
+  opacity:1;
+}
+
+.wn-card:hover{
+  transform:translateY(-8px) scale(1.02);
+  box-shadow:0 20px 40px rgba(0,0,0,.12);
+  border-color:#14b8a6;
+}
+
+.wn-card > *{
+  position:relative;
+  z-index:1;
+}
+
+.wn-featured{border-color:#eab308;box-shadow:0 8px 26px rgba(234, 179, 8, 0.18), inset 0 0 0 2px #eab308}
+
+.wn-icon{
+  width:56px;
+  height:56px;
+  border-radius:14px;
+  margin:0 auto 12px auto;
+  display:grid;
+  place-items:center;
+  position:relative;
+  background:linear-gradient(135deg,#14b8a6 0%,#eab308 100%);
+  box-shadow:0 8px 18px rgba(20, 184, 166, 0.22);
+  transition:transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s ease;
+}
+
+.wn-card:hover .wn-icon{
+  transform:scale(1.1) rotate(5deg);
+  box-shadow:0 12px 24px rgba(20, 184, 166, 0.35);
+}
+
+.wn-blob{position:absolute;inset:-8px;border-radius:20px;background:radial-gradient(closest-side,rgba(20, 184, 166, 0.22),transparent 70%);filter:blur(10px)}
+.wn-title{margin:8px 0 8px 0;font-weight:800;color:#0f172a;transition:color 0.3s ease;}
+.wn-card:hover .wn-title{color:#14b8a6;}
+.wn-desc{margin:0;color:#6b7280;line-height:1.7}
+@media (max-width:480px){.wn-card{padding:20px}}

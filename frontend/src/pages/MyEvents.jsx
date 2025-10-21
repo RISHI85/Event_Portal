@@ -4,6 +4,7 @@ import useAuthStore from '../store/authStore';
 import SkeletonCard from '../components/SkeletonCard/SkeletonCard';
 import '../components/SkeletonCard/SkeletonCard.css';
 import CertificateTemplate from '../components/CertificateTemplate';
+import './MyEvents.css';
 
 const MyEvents = () => {
   const { isAuthenticated, user } = useAuthStore();
@@ -18,6 +19,7 @@ const MyEvents = () => {
   const [submitting, setSubmitting] = useState(false);
   const [certReg, setCertReg] = useState(null);
   const [certIndex, setCertIndex] = useState(0); // no longer used for navigation; kept for minimal change
+  const [filter, setFilter] = useState('all'); // 'all', 'completed', 'upcoming'
 
   // Fetch registrations
   useEffect(() => {
@@ -135,6 +137,22 @@ const MyEvents = () => {
     }
   };
 
+  // Calculate stats (MUST be before any conditional returns)
+  const totalEvents = viewItems.length;
+  const completedEvents = viewItems.filter(r => r.paymentStatus === 'completed' && r.eventPast).length;
+  const upcomingEvents = viewItems.filter(r => !r.eventPast && r.paymentStatus === 'completed').length;
+  const totalWon = 0; // Set to 0 as requested
+
+  // Filter events based on selected filter (MUST be before any conditional returns)
+  const filteredItems = useMemo(() => {
+    if (filter === 'completed') {
+      return viewItems.filter(r => r.eventPast);
+    } else if (filter === 'upcoming') {
+      return viewItems.filter(r => !r.eventPast);
+    }
+    return viewItems;
+  }, [viewItems, filter]);
+
   // Access restriction for admins
   if (isAuthenticated && user?.role === 'admin') {
     return (
@@ -146,123 +164,221 @@ const MyEvents = () => {
   }
 
   return (
-    <div className="container">
-      <h2>My Events</h2>
-      {loading && (
-        <div className="grid">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <SkeletonCard key={`sk-my-${i}`} />
-          ))}
+    <div className="my-events-page">
+      {/* Hero Section */}
+      <div className="my-events-hero">
+        <div className="my-events-container">
+          <div className="hero-badge">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="#14b8a6" stroke="#14b8a6" strokeWidth="1.5" />
+            </svg>
+            <span>Your Event Dashboard</span>
+          </div>
+          <h1 className="hero-title">Track, manage, and celebrate your event journey all in one place</h1>
         </div>
-      )}
+      </div>
 
-      {/* Certificate Modal */}
-      {certReg && (
-        <div className="modal" onClick={() => setCertReg(null)}>
-          <div className="modal-card" style={{ maxWidth: 1200 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <h3 style={{ margin: 0 }}>Your Certificate</h3>
-                <div className="muted" style={{ marginTop: 4 }}>{certReg.eventId?.name}</div>
-              </div>
-              <button className="nav-link" onClick={() => setCertReg(null)}>✕</button>
+      {/* Stats Section */}
+      <div className="my-events-container">
+        <div className="stats-grid">
+          <div 
+            className={`stat-card ${filter === 'all' ? 'active' : ''}`}
+            onClick={() => setFilter('all')}
+            style={{ cursor: 'pointer', transition: 'all 0.3s' }}
+          >
+            <div className="stat-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+                <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2"/>
+              </svg>
             </div>
-            <div style={{ marginTop: 12 }}>
-              {/* Intentionally do not expose prev/next or other members */}
-              {(() => {
-                const storeUser = useAuthStore.getState().user;
-                const uEmail = (storeUser?.email || '').toLowerCase();
-                const names = Array.isArray(certReg._participantNames) ? certReg._participantNames : [];
-                const emails = Array.isArray(certReg._participantEmails) ? certReg._participantEmails : [];
-                let displayName = (storeUser?.name && String(storeUser.name).trim())
-                  ? storeUser.name
-                  : ((storeUser?.email || '').split('@')[0] || 'Participant');
-                if (uEmail) {
-                  const idx = emails.findIndex((e) => (e || '').toLowerCase() === uEmail);
-                  if (idx >= 0 && names[idx]) displayName = names[idx];
-                }
-                const downloadName = `${(certReg.eventId?.name || 'event').replace(/\s+/g,'_')}_${(displayName || 'participant').replace(/\s+/g,'_')}`;
-                return (
-                  <CertificateTemplate
-                    participantName={displayName}
-                    teamName={certReg.teamName || ''}
-                    eventName={certReg.eventId?.name || 'Event'}
-                    dateText={certReg.eventId?.date ? new Date(certReg.eventId.date).toLocaleDateString() : ''}
-                    organizerText={certReg.eventId?.certificateOrganizer || ''}
-                    awardText={certReg.eventId?.certificateAwardText || 'Certificate of Participation'}
-                    accentColor={'#111827'}
-                    primaryColor={'#2563EB'}
-                    bgPattern={certReg.eventId?.certificateTemplateUrl || ''}
-                    issuerName={'GMRIT'}
-                    logoUrl={certReg.eventId?.imageUrl || ''}
-                    headerLogoUrl={'/images/gmrit_logo.png'}
-                    showSeal={true}
-                    sealSize={84}
-                    sealText={'Official'}
-                    downloadBaseName={downloadName}
-                  />
-                );
-              })()}
+            <div className="stat-content">
+              <div className="stat-label">Total Events</div>
+              <div className="stat-value">{totalEvents}</div>
+            </div>
+          </div>
+
+          <div 
+            className={`stat-card ${filter === 'completed' ? 'active' : ''}`}
+            onClick={() => setFilter('completed')}
+            style={{ cursor: 'pointer', transition: 'all 0.3s' }}
+          >
+            <div className="stat-icon success">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-label">Completed</div>
+              <div className="stat-value">{completedEvents}</div>
+            </div>
+          </div>
+
+          <div 
+            className={`stat-card ${filter === 'upcoming' ? 'active' : ''}`}
+            onClick={() => setFilter('upcoming')}
+            style={{ cursor: 'pointer', transition: 'all 0.3s' }}
+          >
+            <div className="stat-icon warning">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-label">Upcoming</div>
+              <div className="stat-value">{upcomingEvents}</div>
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <div className="stat-icon primary">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" fill="none"/>
+              </svg>
+            </div>
+            <div className="stat-content">
+              <div className="stat-label">Total Won</div>
+              <div className="stat-value">₹{totalWon}</div>
             </div>
           </div>
         </div>
-      )}
-      {error && !loading && <p style={{ color: 'crimson' }}>{error}</p>}
-      {!loading && (
-        <div className="grid">
-          {viewItems.map((r) => (
-            <div className="card" key={r._id}>
-              <div className="card-body">
-                <h3>{r.eventId?.name || '—'}</h3>
-                <p>{formatDate(r.eventId?.date)} • {r.eventId?.time || '-'}</p>
-                <p>{r.eventId?.location || '-'}</p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 8 }}>
-                  <span className={`badge ${r.paymentStatus === 'completed' ? 'success' : r.paymentStatus === 'pending' ? 'warning' : 'info'}`}>
-                    {r.paymentStatus || 'unknown'}
+
+        {/* Events Grid */}
+        {loading && (
+          <div className="events-grid">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={`sk-my-${i}`} />
+            ))}
+          </div>
+        )}
+
+        {error && !loading && <p style={{ color: 'crimson', marginTop: 24 }}>{error}</p>}
+
+        {!loading && viewItems.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+            <p>No registrations yet. Start exploring events!</p>
+          </div>
+        )}
+
+        {!loading && viewItems.length > 0 && filteredItems.length === 0 && (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+            <p>No {filter} events found.</p>
+          </div>
+        )}
+
+        {!loading && filteredItems.length > 0 && (
+          <div className="events-grid">
+            {filteredItems.map((r) => (
+              <div className="event-card" key={r._id}>
+                <div className="event-card-header">
+                  <h3 className="event-title">{r.eventId?.name || '—'}</h3>
+                  <span className={`status-badge ${r.paymentStatus === 'completed' ? 'completed' : r.paymentStatus === 'pending' ? 'pending' : ''}`}>
+                    {r.paymentStatus === 'completed' ? 'Payment Completed' : r.paymentStatus === 'pending' ? 'Pending' : r.paymentStatus}
                   </span>
-                  <small>Payment status</small>
-                  {r.paymentStatus === 'pending' && typeof r.pendingRemainingMin === 'number' && (
-                    <small style={{ color: '#8a6d3b' }}>
-                      Complete in ~{r.pendingRemainingMin} min
-                    </small>
+                </div>
+
+                <div className="event-details">
+                  <div className="detail-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
+                      <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                    <span>{formatDate(r.eventId?.date)} • {r.eventId?.time || '-'}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" strokeWidth="2"/>
+                      <circle cx="12" cy="10" r="3" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                    <span>{r.eventId?.location || '-'}</span>
+                  </div>
+
+                  <div className="detail-item">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth="2"/>
+                      <circle cx="12" cy="7" r="4" stroke="currentColor" strokeWidth="2"/>
+                    </svg>
+                    <span>Amount paid: ₹{r.totalFee ?? 0}</span>
+                  </div>
+
+                  {r.teamName && (
+                    <div className="detail-item">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                      <span>Team: {r.teamName} • Size: {r.teamSize}</span>
+                    </div>
                   )}
                 </div>
 
-                {/* Registration details */}
-                <div style={{ marginTop: 8, color: '#374151' }}>
-                  <p style={{ margin: '2px 0' }}>Amount paid: ₹{r.totalFee ?? 0}</p>
-                  {r.teamName && <p style={{ margin: '2px 0' }}>Team: {r.teamName}</p>}
-                  <p style={{ margin: '2px 0' }}>Team size: {r.teamSize}</p>
-                </div>
-
-                {/* Feedback button for past events with completed payment */}
                 {r.paymentStatus === 'completed' && r.eventPast && (
-                  <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    {r.hasFeedback ? (
-                      <span className="badge success">Feedback done</span>
-                    ) : (
-                      <button className="btn" onClick={() => openFeedback(r)}>
-                        Give Feedback
-                      </button>
-                    )}
-                    <button
-                      className="btn btn-light"
+                  <div className="event-actions">
+                    <button 
+                      className="action-btn feedback-btn"
+                      onClick={() => openFeedback(r)}
+                      disabled={r.hasFeedback}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="2"/>
+                      </svg>
+                      {r.hasFeedback ? 'Feedback Submitted' : 'Feedback'}
+                    </button>
+                    <button 
+                      className="action-btn certificate-btn"
                       onClick={() => {
-                        // Only show the currently logged-in user's certificate
-                        setCertIndex(0);
-                        setCertReg(r);
+                        // Open certificate in new tab
+                        const storeUser = useAuthStore.getState().user;
+                        const uEmail = (storeUser?.email || '').toLowerCase();
+                        const names = Array.isArray(r._participantNames) ? r._participantNames : [];
+                        const emails = Array.isArray(r._participantEmails) ? r._participantEmails : [];
+                        let displayName = (storeUser?.name && String(storeUser.name).trim())
+                          ? storeUser.name
+                          : ((storeUser?.email || '').split('@')[0] || 'Participant');
+                        if (uEmail) {
+                          const idx = emails.findIndex((e) => (e || '').toLowerCase() === uEmail);
+                          if (idx >= 0 && names[idx]) displayName = names[idx];
+                        }
+                        
+                        // Create certificate data
+                        const certData = {
+                          participantName: displayName,
+                          teamName: r.teamName || '',
+                          eventName: r.eventId?.name || 'Event',
+                          dateText: r.eventId?.date ? new Date(r.eventId.date).toLocaleDateString() : '',
+                          organizerText: r.eventId?.certificateOrganizer || '',
+                          awardText: r.eventId?.certificateAwardText || 'Certificate of Participation',
+                          eventTimings: r.eventId?.timings || null,
+                          certificateId: `CERT-${(r._id || '').slice(-6).toUpperCase() || 'XXXXXX'}`,
+                          leftSigner: r.eventId?.certificateOrganizer || 'Organizer',
+                          rightSigner: 'Registrar',
+                        };
+                        
+                        // Store in sessionStorage and open new tab
+                        sessionStorage.setItem('certificateData', JSON.stringify(certData));
+                        window.open('/certificate-view', '_blank');
                       }}
                     >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="currentColor" strokeWidth="2" fill="none"/>
+                      </svg>
                       Certificate
                     </button>
                   </div>
                 )}
+
+                {r.paymentStatus === 'pending' && typeof r.pendingRemainingMin === 'number' && (
+                  <div className="pending-warning">
+                    ⚠️ Complete payment in ~{r.pendingRemainingMin} min
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
-          {viewItems.length === 0 && !loading && <p>No registrations yet.</p>}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
+
 
       {/* Feedback Modal */}
       {showModal && (

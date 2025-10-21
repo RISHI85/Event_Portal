@@ -318,6 +318,140 @@ router.get('/event/:eventId', auth, async (req, res) => {
   }
 });
 
+// @route GET /api/registrations/event/:eventId/export
+// @desc Export registrations to Excel
+// @access Private (Admin)
+router.get('/event/:eventId/export', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const XLSX = require('xlsx');
+    const User = require('../models/User');
+
+    const registrations = await Registration.find({ eventId: req.params.eventId })
+      .populate('userId', 'email gender year name')
+      .populate('eventId', 'name')
+      .sort({ registeredAt: -1 });
+
+    // Resolve team member details
+    const emails = new Set();
+    const locals = new Set();
+    for (const r of registrations) {
+      if (Array.isArray(r.teamMembers)) {
+        for (const m of r.teamMembers) {
+          const e = (m?.email || '').toLowerCase();
+          const n = (m?.name || '').trim().toLowerCase();
+          if (e) emails.add(e);
+          if (n) locals.add(n);
+        }
+      }
+    }
+
+    let metaEmail = new Map();
+    let metaLocal = new Map();
+    try {
+      const allUsers = await User.find({
+        $or: [
+          emails.size ? { email: { $in: Array.from(emails) } } : { _id: null },
+          locals.size ? { email: { $exists: true } } : { _id: null },
+        ]
+      }).select('email gender year');
+      for (const u of allUsers) {
+        const e = String(u.email || '').toLowerCase();
+        const info = { gender: u.gender || 'Unknown', year: u.year || 'Unknown' };
+        if (e) metaEmail.set(e, info);
+        const local = e.split('@')[0] || '';
+        if (local && !metaLocal.has(local)) metaLocal.set(local, info);
+      }
+    } catch (e) {
+      console.error('Failed resolving team member demographics:', e?.message || e);
+    }
+
+    // Build Excel data
+    const rows = [];
+    
+    for (const r of registrations) {
+      const baseData = {
+        'Registration ID': r._id.toString(),
+        'Event Name': r.eventId?.name || '',
+        'Registration Type': r.registrationType === 'internal' ? 'Internal' : 'External',
+        'Team Name': r.teamName || 'N/A',
+        'Department': r.department || 'N/A',
+        'Total Fee': r.totalFee,
+        'Payment Status': r.paymentStatus,
+        'Registered At': new Date(r.registeredAt).toLocaleString(),
+      };
+
+      // If team has members, create a row for each member
+      if (Array.isArray(r.teamMembers) && r.teamMembers.length > 0) {
+        for (const m of r.teamMembers) {
+          const e = (m?.email || '').toLowerCase();
+          let info = e ? metaEmail.get(e) : null;
+          if (!info) {
+            const key = (m?.name || '').trim().toLowerCase();
+            if (key) info = metaLocal.get(key);
+          }
+          
+          rows.push({
+            ...baseData,
+            'Participant Name': m?.name || 'N/A',
+            'Participant Email': m?.email || 'N/A',
+            'Participant Phone': m?.phone || 'N/A',
+            'Gender': info?.gender || 'Unknown',
+            'Year': info?.year || r.year || 'Unknown',
+          });
+        }
+      } else {
+        // Individual registration
+        rows.push({
+          ...baseData,
+          'Participant Name': r.userId?.name || r.userId?.email?.split('@')[0] || 'N/A',
+          'Participant Email': r.userId?.email || 'N/A',
+          'Participant Phone': 'N/A',
+          'Gender': r.userId?.gender || 'Unknown',
+          'Year': r.year || r.userId?.year || 'Unknown',
+        });
+      }
+    }
+
+    // Create workbook and worksheet
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 25 }, // Registration ID
+      { wch: 30 }, // Event Name
+      { wch: 20 }, // Team Name
+      { wch: 20 }, // Department
+      { wch: 10 }, // Total Fee
+      { wch: 15 }, // Payment Status
+      { wch: 20 }, // Registered At
+      { wch: 25 }, // Participant Name
+      { wch: 30 }, // Participant Email
+      { wch: 15 }, // Participant Phone
+      { wch: 12 }, // Gender
+      { wch: 15 }, // Year
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, 'Registrations');
+
+    // Generate buffer
+    const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    // Send file
+    res.setHeader('Content-Disposition', `attachment; filename=registrations_${req.params.eventId}.xlsx`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.send(buffer);
+
+  } catch (error) {
+    console.error('Export registrations error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route POST /api/registrations/register
 // @desc Register for an event
 // @access Private
@@ -348,6 +482,28 @@ router.post('/register', auth, async (req, res) => {
     // For main events, allow registration only if basic registration is enabled
     if (event.isMainEvent && !event.basicRegistrationEnabled) {
       return res.status(400).json({ message: 'Registration is not enabled for this main event' });
+    }
+
+    // For sub-events, check if user has completed basic registration for parent main event
+    if (!event.isMainEvent && event.parentEvent) {
+      const parentEvent = await Event.findById(event.parentEvent);
+      if (parentEvent && parentEvent.basicRegistrationEnabled) {
+        // Check if user has completed basic registration for parent event
+        const basicRegistration = await Registration.findOne({
+          eventId: event.parentEvent,
+          userId: req.user._id,
+          paymentStatus: 'completed'
+        });
+        
+        if (!basicRegistration) {
+          return res.status(400).json({ 
+            message: `You must complete basic registration for "${parentEvent.name}" before registering for its sub-events`,
+            requiresBasicRegistration: true,
+            mainEventId: event.parentEvent,
+            mainEventName: parentEvent.name
+          });
+        }
+      }
     }
 
     // Derive team constraints from event
@@ -415,6 +571,10 @@ router.post('/register', auth, async (req, res) => {
       ? Number(event.basicRegistrationAmount || 0)
       : Number(feePerHead || 0);
 
+    // Determine registration type based on email domain
+    const userEmail = req.user.email || '';
+    const registrationType = userEmail.toLowerCase().endsWith('@gmrit.edu.in') ? 'internal' : 'external';
+
     // Create registration
     const registration = new Registration({
       eventId,
@@ -424,24 +584,40 @@ router.post('/register', auth, async (req, res) => {
       teamName: teamName || null,
       // Store exact names provided
       teamMembers: teamsAllowed ? incomingMembers : (incomingMembers.length ? [incomingMembers[0]] : []),
-      totalFee
+      totalFee,
+      registrationType
     });
 
     if (totalFee >= MIN_INR) {
-      // Create Stripe payment intent (amount in paise)
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(totalFee * 100),
-        currency: 'inr',
-        // Enable Card + UPI via automatic payment methods
-        automatic_payment_methods: { enabled: true },
-        receipt_email: req.user.email,
+      // Create Stripe Checkout Session (hosted payment page)
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'inr',
+              product_data: {
+                name: event.name,
+                description: `Event Registration${teamName ? ` - Team: ${teamName}` : ''}`,
+                images: event.imageUrl ? [event.imageUrl] : [],
+              },
+              unit_amount: Math.round(totalFee * 100), // Amount in paise
+            },
+            quantity: 1,
+          },
+        ],
+        mode: 'payment',
+        success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/success?session_id={CHECKOUT_SESSION_ID}&registration_id=${registration._id}`,
+        cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/cancel?registration_id=${registration._id}`,
+        customer_email: req.user.email,
         metadata: {
           eventId: eventId.toString(),
           userId: req.user._id.toString(),
           registrationId: registration._id.toString()
         }
       });
-      registration.stripe_payment_intent_id = paymentIntent.id;
+      
+      registration.stripe_session_id = session.id;
     } else {
       // Treat fees below threshold as free to avoid Stripe amount_too_small
       registration.paymentStatus = 'completed';
@@ -457,15 +633,15 @@ router.post('/register', auth, async (req, res) => {
     }
 
     // Build client response
-    let clientSecret = null;
-    if (registration.stripe_payment_intent_id) {
-      // retrieve intent to expose client_secret
-      const intent = await stripe.paymentIntents.retrieve(registration.stripe_payment_intent_id);
-      clientSecret = intent.client_secret;
+    let checkoutUrl = null;
+    if (registration.stripe_session_id) {
+      const session = await stripe.checkout.sessions.retrieve(registration.stripe_session_id);
+      checkoutUrl = session.url;
     }
-    res.status(201).json({ registration, clientSecret });
+    res.status(201).json({ registration, checkoutUrl });
   } catch (error) {
-    res.status(500).json({ message: 'Server error' });
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -492,6 +668,100 @@ router.get('/:id', auth, async (req, res) => {
     res.json({ registration, clientSecret });
   } catch (error) {
     console.error('Get registration error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route POST /api/registrations/:id/verify-checkout
+// @desc Verify Stripe Checkout session and update payment status
+// @access Private (owner only)
+router.post('/:id/verify-checkout', auth, async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    const registration = await Registration.findById(req.params.id)
+      .populate('eventId')
+      .populate('userId', 'email name');
+    
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    // Only owner can verify
+    const isOwner = registration.userId._id.toString() === req.user._id.toString();
+    if (!isOwner) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Retrieve session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    
+    if (session.payment_status === 'paid') {
+      registration.paymentStatus = 'completed';
+      registration.stripe_payment_id = session.payment_intent;
+      await registration.save();
+
+      // Send confirmation email
+      await sendReceiptForRegistration(registration, registration.userId?.email);
+
+      res.json({ 
+        message: 'Payment verified successfully',
+        registration 
+      });
+    } else {
+      res.status(400).json({ 
+        message: 'Payment not completed',
+        status: session.payment_status 
+      });
+    }
+  } catch (error) {
+    console.error('Verify checkout error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route POST /api/registrations/:id/confirm-payment
+// @desc Manually confirm payment after successful Stripe payment
+// @access Private (owner only)
+router.post('/:id/confirm-payment', auth, async (req, res) => {
+  try {
+    const { paymentIntentId } = req.body;
+    const registration = await Registration.findById(req.params.id)
+      .populate('eventId')
+      .populate('userId', 'email name');
+    
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    // Only owner can confirm
+    const isOwner = registration.userId._id.toString() === req.user._id.toString();
+    if (!isOwner) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Verify payment with Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    
+    if (paymentIntent.status === 'succeeded') {
+      registration.paymentStatus = 'completed';
+      registration.stripe_payment_id = paymentIntentId;
+      await registration.save();
+
+      // Send confirmation email
+      await sendReceiptForRegistration(registration, registration.userId?.email);
+
+      res.json({ 
+        message: 'Payment confirmed successfully',
+        registration 
+      });
+    } else {
+      res.status(400).json({ 
+        message: 'Payment not successful',
+        status: paymentIntent.status 
+      });
+    }
+  } catch (error) {
+    console.error('Confirm payment error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

@@ -1,0 +1,171 @@
+.share-buttons-container {
+    position: relative;
+    display: inline-block;
+}
+
+.share-trigger-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #1f2937;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.share-trigger-btn:hover {
+    border-color: #14b8a6;
+    background: #f0fdfa;
+    color: #14b8a6;
+}
+
+.share-trigger-btn svg {
+    color: #14b8a6;
+}
+
+.share-dropdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.3);
+    z-index: 999;
+    animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.share-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    min-width: 280px;
+    animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.share-dropdown-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.share-dropdown-header h4 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.share-close-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #6b7280;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.share-close-btn:hover {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.share-options {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.share-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.share-option:hover {
+    background: #f9fafb;
+    transform: translateX(4px);
+}
+
+.share-option.whatsapp {
+    color: #25D366;
+}
+
+.share-option.twitter {
+    color: #1DA1F2;
+}
+
+.share-option.linkedin {
+    color: #0A66C2;
+}
+
+.share-option.facebook {
+    color: #1877F2;
+}
+
+.share-option.copy {
+    color: #6b7280;
+}
+
+.share-option svg {
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .share-dropdown {
+        position: fixed;
+        top: auto;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        border-radius: 16px 16px 0 0;
+        min-width: auto;
+    }
+
+    .share-trigger-btn {
+        font-size: 0.875rem;
+        padding: 8px 16px;
+    }
+}
