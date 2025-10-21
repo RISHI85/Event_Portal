@@ -1,6 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import Hero from '../components/Hero';
 import LiveEvents from '../components/LiveEvents';
+// import EventHighlights from '../components/EventHighlights'; // TODO: Uncomment to enable featured events carousel
+// import Testimonials from '../components/Testimonials'; // TODO: Uncomment to enable testimonials section
 import WhatsPossible from '../components/WhatsPossible';
 import About from '../components/About';
 import SectionCard from '../components/SectionCard';
@@ -99,6 +101,12 @@ const Home = () => {
           </SectionCard>
         </div>
       )}
+      {/* TODO: Uncomment to enable featured events carousel */}
+      {/* <EventHighlights /> */}
+      
+      {/* TODO: Uncomment to enable testimonials section */}
+      {/* <Testimonials /> */}
+      
       <div id="whats" className="fade-in-on-load scroll-anim">
         <SectionCard title="What’s possible with EventPortal" subtitle="A quick overview of features you'll love.">
           <WhatsPossible />

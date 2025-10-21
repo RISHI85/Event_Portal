@@ -1,0 +1,120 @@
+.event-faq-section {
+    margin-top: 60px;
+    padding-top: 40px;
+    border-top: 2px solid #e5e7eb;
+}
+
+.faq-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1f2937;
+    margin: 0 0 32px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.faq-title svg {
+    color: #14b8a6;
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.faq-item {
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+    border-color: #14b8a6;
+    box-shadow: 0 4px 16px rgba(20, 184, 166, 0.1);
+}
+
+.faq-item.open {
+    border-color: #14b8a6;
+    box-shadow: 0 4px 16px rgba(20, 184, 166, 0.15);
+}
+
+.faq-question {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    background: none;
+    border: none;
+    text-align: left;
+    cursor: pointer;
+    font-size: 1.0625rem;
+    font-weight: 700;
+    color: #1f2937;
+    transition: all 0.3s ease;
+}
+
+.faq-question:hover {
+    color: #14b8a6;
+}
+
+.faq-item.open .faq-question {
+    color: #14b8a6;
+}
+
+.faq-icon {
+    flex-shrink: 0;
+    transition: transform 0.3s ease;
+    color: #6b7280;
+}
+
+.faq-item.open .faq-icon {
+    transform: rotate(180deg);
+    color: #14b8a6;
+}
+
+.faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease, padding 0.3s ease;
+}
+
+.faq-item.open .faq-answer {
+    max-height: 500px;
+    padding: 0 24px 20px 24px;
+}
+
+.faq-answer p {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: #4b5563;
+}
+
+@media (max-width: 768px) {
+    .event-faq-section {
+        margin-top: 40px;
+        padding-top: 32px;
+    }
+
+    .faq-title {
+        font-size: 1.5rem;
+    }
+
+    .faq-question {
+        padding: 16px 20px;
+        font-size: 1rem;
+    }
+
+    .faq-item.open .faq-answer {
+        padding: 0 20px 16px 20px;
+    }
+
+    .faq-answer p {
+        font-size: 0.9375rem;
+    }
+}

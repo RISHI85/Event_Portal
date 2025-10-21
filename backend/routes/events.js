@@ -8,8 +8,16 @@ const { auth, adminAuth } = require('../middleware/auth');
 // @access Public
 router.get('/', async (req, res) => {
   try {
-    const { department, status, timeframe, isMainEvent, parentEvent, includeSubCount } = req.query;
+    const { department, status, timeframe, isMainEvent, parentEvent, includeSubCount, search, limit } = req.query;
     let filter = {};
+
+    // Search filter (search by event name or description)
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
 
     // Department filter (honor any provided department, including 'Common')
     if (department) {
@@ -69,10 +77,20 @@ router.get('/', async (req, res) => {
       }
     }
 
-    let events = await Event.find(filter)
+    let query = Event.find(filter)
       .populate('createdBy', 'email role')
       .populate('parentEvent', 'name')
       .sort({ date: 1 });
+
+    // Apply limit if provided
+    if (limit) {
+      const limitNum = parseInt(limit, 10);
+      if (!isNaN(limitNum) && limitNum > 0) {
+        query = query.limit(limitNum);
+      }
+    }
+
+    let events = await query;
 
     // Optionally include hasSubEvents flag for each event
     if (includeSubCount === 'true') {
@@ -118,7 +136,14 @@ router.get('/departments/list', async (req, res) => {
 // @access Public
 router.get('/:id', async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id)
+    const { id } = req.params;
+
+    // Validate ObjectId format
+    if (!id || typeof id !== 'string' || !id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ message: 'Invalid event ID format' });
+    }
+
+    const event = await Event.findById(id)
       .populate('createdBy', 'email role')
       .populate('parentEvent', 'name');
 

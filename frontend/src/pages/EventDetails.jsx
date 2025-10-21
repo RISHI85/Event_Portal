@@ -6,6 +6,8 @@ import Breadcrumb from '../components/Breadcrumb';
 import ShareButtons from '../components/ShareButtons';
 import CountdownTimer from '../components/CountdownTimer';
 import AddToCalendar from '../components/AddToCalendar';
+// import SimilarEvents from '../components/SimilarEvents'; // TODO: Uncomment to enable similar events
+import EventFAQ from '../components/EventFAQ';
 import './EventDetails.css';
 
 const statusFromDate = (date) => {
@@ -60,20 +62,35 @@ export default function EventDetails() {
         }
         setIsRegistered(setIds.has(String(id)));
         
-        // Check if this is a sub-event and if user has basic registration
+        // Check if this is a Stepcone sub-event and if user has basic registration
+        // Only Stepcone events require basic registration, not student chapter events
         if (event && !event.isMainEvent && event.parentEvent) {
-          const hasBasic = setIds.has(String(event.parentEvent));
-          setHasBasicRegistration(hasBasic);
-          
-          // Fetch parent event name if needed
-          if (!hasBasic) {
-            fetchWithLoading(`/api/events/${event.parentEvent}`)
-              .then(r => r.json())
-              .then(parentData => {
-                if (mounted) setParentEventName(parentData.name || 'Main Event');
-              })
-              .catch(() => setParentEventName('Main Event'));
-          }
+          // Fetch parent event to check if it's Stepcone
+          fetchWithLoading(`/api/events/${event.parentEvent}`)
+            .then(r => r.json())
+            .then(parentData => {
+              if (!mounted) return;
+              
+              // Check if parent event name contains "stepcone" (case-insensitive)
+              const isStepconeEvent = parentData.name && 
+                parentData.name.toLowerCase().includes('stepcone');
+              
+              if (isStepconeEvent) {
+                // Only check basic registration for Stepcone events
+                const hasBasic = setIds.has(String(event.parentEvent));
+                setHasBasicRegistration(hasBasic);
+                if (!hasBasic) {
+                  setParentEventName(parentData.name || 'Main Event');
+                }
+              } else {
+                // Student chapter events don't need basic registration
+                setHasBasicRegistration(true);
+              }
+            })
+            .catch(() => {
+              // On error, assume no basic registration needed
+              setHasBasicRegistration(true);
+            });
         }
       })
       .catch(() => {
@@ -138,7 +155,9 @@ export default function EventDetails() {
 
       {/* Countdown Timer for upcoming events */}
       {event.date && new Date(event.date) > new Date() && (
-        <CountdownTimer targetDate={event.date} />
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+          <CountdownTimer targetDate={event.date} />
+        </div>
       )}
 
       <div className="ed-grid">
@@ -330,6 +349,21 @@ export default function EventDetails() {
           </div>
         </div>
       </div>
+
+      {/* FAQ Section */}
+      <div className="container" style={{ marginTop: '40px', marginBottom: '60px' }}>
+        <EventFAQ event={event} />
+      </div>
+
+      {/* Similar Events Section - COMMENTED OUT */}
+      {/* TODO: Uncomment to enable similar events */}
+      {/* <div className="container" style={{ marginTop: '40px', marginBottom: '60px' }}>
+        <SimilarEvents 
+          currentEventId={event._id} 
+          department={event.department}
+          category={event.category}
+        />
+      </div> */}
     </section>
   );
 }
