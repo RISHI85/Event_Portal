@@ -7,7 +7,6 @@ import WhatsPossible from '../components/WhatsPossible';
 import About from '../components/About';
 import SectionCard from '../components/SectionCard';
 import useAuthStore from '../store/authStore';
-import AuthInline from '../components/AuthInline';
 
 const Home = () => {
   const { isAuthenticated } = useAuthStore();
@@ -41,7 +40,6 @@ const Home = () => {
 
   const getSectionOrder = () => {
     const ids = ['top'];
-    if (!isAuthenticated) ids.push('auth');
     if (isAuthenticated) ids.push('live');
     ids.push('whats');
     ids.push('about');
@@ -87,13 +85,6 @@ const Home = () => {
   return (
     <div>
       <Hero />
-      {!isAuthenticated && (
-        <div id="auth" className="fade-in-on-load scroll-anim">
-          <SectionCard title="Get Started" subtitle="Create an account or sign in to register for events.">
-            <AuthInline />
-          </SectionCard>
-        </div>
-      )}
       {isAuthenticated && (
         <div id="live" className="fade-in-on-load scroll-anim">
           <SectionCard title="Live Events" subtitle="Register now for ongoing and upcoming events.">
@@ -108,7 +99,7 @@ const Home = () => {
       {/* <Testimonials /> */}
       
       <div id="whats" className="fade-in-on-load scroll-anim">
-        <SectionCard title="What’s possible with EventPortal" subtitle="A quick overview of features you'll love.">
+        <SectionCard title="What's possible with EventPortal" subtitle="A quick overview of features you'll love.">
           <WhatsPossible />
         </SectionCard>
       </div>

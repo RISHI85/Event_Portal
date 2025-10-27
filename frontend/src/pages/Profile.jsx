@@ -63,26 +63,38 @@ const Profile = () => {
         
         // Fetch stats
         try {
-          const { data: regs } = await api.get('/api/registrations/my');
+          const { data: regs } = await api.get('/api/registrations/my-events');
           console.log('Registrations data:', regs); // Debug log
           
           const registrations = Array.isArray(regs) ? regs : [];
+          const now = Date.now();
           
           // Total registered events (with completed payment)
           const totalRegistered = registrations.filter(r => r.paymentStatus === 'completed').length;
           
-          // Events that have already happened (past events)
-          const completedEvents = registrations.filter(r => 
-            r.paymentStatus === 'completed' && r.eventPast === true
+          // Events that have already happened (past events) - these are the events attended
+          // Calculate eventPast on client side by comparing event date with current time
+          const completedEvents = registrations.filter(r => {
+            if (r.paymentStatus !== 'completed') return false;
+            if (!r.eventId?.date) return false;
+            const eventDate = new Date(r.eventId.date);
+            if (Number.isNaN(eventDate.getTime())) return false;
+            return eventDate.getTime() < now;
+          }).length;
+          
+          // Events Won = Count of registrations where winnerStatus is 'winner' or 'runner'
+          const eventsWon = registrations.filter(r => 
+            r.paymentStatus === 'completed' && (r.winnerStatus === 'winner' || r.winnerStatus === 'runner')
           ).length;
           
-          // Events Attended = Total Registered - Completed (past) Events
-          const attended = totalRegistered - completedEvents;
-          const won = 0; // Can be calculated from achievements
+          // Events Attended = Completed (past) Events
+          const attended = completedEvents;
+          const won = eventsWon;
           
           console.log('Total Registered:', totalRegistered);
-          console.log('Completed (Past):', completedEvents);
-          console.log('Events Attended (Upcoming):', attended);
+          console.log('Completed (Past/Attended):', completedEvents);
+          console.log('Events Attended:', attended);
+          console.log('Events Won:', eventsWon);
           
           setStats({ attended, won });
         } catch (err) {

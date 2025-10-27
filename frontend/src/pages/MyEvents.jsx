@@ -141,7 +141,7 @@ const MyEvents = () => {
   const totalEvents = viewItems.length;
   const completedEvents = viewItems.filter(r => r.paymentStatus === 'completed' && r.eventPast).length;
   const upcomingEvents = viewItems.filter(r => !r.eventPast && r.paymentStatus === 'completed').length;
-  const totalWon = 0; // Set to 0 as requested
+  const totalWon = user?.totalAmountWon || 0; // Total prize money won by the user
 
   // Filter events based on selected filter (MUST be before any conditional returns)
   const filteredItems = useMemo(() => {

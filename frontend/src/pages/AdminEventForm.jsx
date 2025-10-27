@@ -49,6 +49,8 @@ const AdminEventForm = () => {
   const [mainEvents, setMainEvents] = useState([]);
   const [basicRegistrationEnabled, setBasicRegistrationEnabled] = useState(false);
   const [basicRegistrationAmount, setBasicRegistrationAmount] = useState(0);
+  const [winnerPrize, setWinnerPrize] = useState(0);
+  const [runnerPrize, setRunnerPrize] = useState(0);
   // Separate UI-only section for Student Coordinators; merged on submit
   const [studentContacts, setStudentContacts] = useState([{ name: '', email: '', phone: '' }]);
 
@@ -109,6 +111,8 @@ const AdminEventForm = () => {
         setStudentContacts([{ name: '', email: '', phone: '' }]);
         setBasicRegistrationEnabled(!!data.basicRegistrationEnabled);
         setBasicRegistrationAmount(Number(data.basicRegistrationAmount || 0));
+        setWinnerPrize(Number(data.winnerPrize || 0));
+        setRunnerPrize(Number(data.runnerPrize || 0));
       } catch (e) {
         toast.error('Failed to load event');
       }
@@ -195,6 +199,10 @@ const AdminEventForm = () => {
       // Basic registration fields (main events only)
       payload.basicRegistrationEnabled = !!basicRegistrationEnabled;
       payload.basicRegistrationAmount = Number(basicRegistrationAmount || 0);
+      
+      // Prize money fields
+      payload.winnerPrize = Number(winnerPrize || 0);
+      payload.runnerPrize = Number(runnerPrize || 0);
 
       if (id) {
         await api.put(`/api/events/${id}`, payload);
@@ -605,6 +613,30 @@ const AdminEventForm = () => {
               <small className="muted">When enabled, users can register for the main event. Sub-events continue to use their own fee.</small>
             </fieldset>
           )}
+
+          {/* Prize Money */}
+          <fieldset className="card-like" style={{ marginTop: 10 }}>
+            <legend>Prize Money (Optional)</legend>
+            <label>Winner Prize (₹)
+              <input
+                type="number"
+                min={0}
+                value={winnerPrize}
+                onChange={(e) => setWinnerPrize(Number(e.target.value || 0))}
+                placeholder="Enter prize amount for winner"
+              />
+            </label>
+            <label>Runner-up Prize (₹)
+              <input
+                type="number"
+                min={0}
+                value={runnerPrize}
+                onChange={(e) => setRunnerPrize(Number(e.target.value || 0))}
+                placeholder="Enter prize amount for runner-up"
+              />
+            </label>
+            <small className="muted">Prize money will be added to the team leader's account when marked as winner/runner.</small>
+          </fieldset>
 
           <fieldset className="card-like" style={{ marginTop: 10 }}>
             <legend>Registration Details</legend>

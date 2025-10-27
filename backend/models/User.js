@@ -73,6 +73,11 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   }, // NEW: Field for OTP expiration time
+  totalAmountWon: {
+    type: Number,
+    default: 0,
+    min: 0
+  }, // Total prize money won by the user
   createdAt: {
     type: Date,
     default: Date.now

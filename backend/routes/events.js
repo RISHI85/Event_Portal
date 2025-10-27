@@ -198,6 +198,8 @@ router.post('/', adminAuth, async (req, res) => {
       certificateAwardText,
       basicRegistrationEnabled,
       basicRegistrationAmount,
+      winnerPrize,
+      runnerPrize,
     } = req.body;
 
     // Sanitize relationships
@@ -226,6 +228,8 @@ router.post('/', adminAuth, async (req, res) => {
       certificateAwardText: certificateAwardText || 'Certificate of Participation',
       basicRegistrationEnabled: !!basicRegistrationEnabled,
       basicRegistrationAmount: Number(basicRegistrationAmount || 0),
+      winnerPrize: Number(winnerPrize || 0),
+      runnerPrize: Number(runnerPrize || 0),
       createdBy: req.user._id
     });
 
@@ -263,6 +267,8 @@ router.put('/:id', adminAuth, async (req, res) => {
       certificateAwardText,
       basicRegistrationEnabled,
       basicRegistrationAmount,
+      winnerPrize,
+      runnerPrize,
     } = req.body;
 
     let event = await Event.findById(req.params.id);
@@ -296,6 +302,8 @@ router.put('/:id', adminAuth, async (req, res) => {
     if (certificateAwardText !== undefined) updateDoc.$set.certificateAwardText = certificateAwardText ?? 'Certificate of Participation';
     if (typeof basicRegistrationEnabled === 'boolean') updateDoc.$set.basicRegistrationEnabled = basicRegistrationEnabled;
     if (basicRegistrationAmount !== undefined) updateDoc.$set.basicRegistrationAmount = Number(basicRegistrationAmount || 0);
+    if (winnerPrize !== undefined) updateDoc.$set.winnerPrize = Number(winnerPrize || 0);
+    if (runnerPrize !== undefined) updateDoc.$set.runnerPrize = Number(runnerPrize || 0);
 
     // Relationships
     if (isMain !== undefined) updateDoc.$set.isMainEvent = isMain;

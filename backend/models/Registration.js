@@ -87,6 +87,11 @@ const registrationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }, // Whether a failure/timeout email has been sent
+  winnerStatus: {
+    type: String,
+    enum: ['none', 'winner', 'runner'],
+    default: 'none'
+  }, // Winner status for the team/individual
 });
 
 module.exports = mongoose.model('Registration', registrationSchema);

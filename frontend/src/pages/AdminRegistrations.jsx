@@ -454,6 +454,7 @@ const AdminRegistrations = () => {
                   <th style={{ padding: 12, textAlign: 'left' }}>Members</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Fee</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Payment</th>
+                  <th style={{ padding: 12, textAlign: 'left' }}>Winner Status</th>
                   <th style={{ padding: 12, textAlign: 'left' }}>Registered At</th>
                 </tr>
               </thead>
@@ -495,12 +496,47 @@ const AdminRegistrations = () => {
                         {r.paymentStatus}
                       </span>
                     </td>
+                    <td style={{ padding: 12 }}>
+                      {r.paymentStatus === 'completed' ? (
+                        <select
+                          value={r.winnerStatus || 'none'}
+                          onChange={async (e) => {
+                            const newStatus = e.target.value;
+                            try {
+                              await api.post(`/api/registrations/${r._id}/set-winner-status`, { winnerStatus: newStatus });
+                              toast.success(`Winner status updated to ${newStatus}`);
+                              // Reload registrations
+                              const { data } = await api.get(`/api/registrations/event/${id}`);
+                              setRegistrations(data);
+                            } catch (err) {
+                              toast.error(err.response?.data?.message || 'Failed to update winner status');
+                            }
+                          }}
+                          style={{
+                            padding: '6px 10px',
+                            borderRadius: 6,
+                            border: '2px solid #e5e7eb',
+                            fontSize: 14,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            background: r.winnerStatus === 'winner' ? '#dcfce7' : r.winnerStatus === 'runner' ? '#fef3c7' : '#f9fafb',
+                            color: r.winnerStatus === 'winner' ? '#166534' : r.winnerStatus === 'runner' ? '#92400e' : '#6b7280'
+                          }}
+                        >
+                          <option value="none">None</option>
+                          <option value="winner">Winner</option>
+                          <option value="runner">Runner</option>
+                        </select>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td style={{ padding: 12 }}>{new Date(r.registeredAt).toLocaleString()}</td>
                   </tr>
                 ))}
                 {filteredRegs.length === 0 && (
                   <tr>
-                    <td colSpan={11} style={{ padding: 16, textAlign: 'center' }} className="muted">No registrations found</td>
+                    <td colSpan={12} style={{ padding: 16, textAlign: 'center' }} className="muted">No registrations found</td>
                   </tr>
                 )}
               </tbody>

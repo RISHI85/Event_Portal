@@ -106,6 +106,17 @@ const eventSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  // Prize money for winners and runners
+  winnerPrize: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  runnerPrize: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

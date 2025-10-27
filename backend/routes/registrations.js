@@ -817,6 +817,92 @@ const webhookHandler = async (req, res) => {
   }
 };
 
+// @route POST /api/registrations/:id/set-winner-status
+// @desc Set winner/runner status for a registration (Admin only)
+// @access Private (Admin)
+router.post('/:id/set-winner-status', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const { winnerStatus } = req.body; // 'none', 'winner', or 'runner'
+    
+    if (!['none', 'winner', 'runner'].includes(winnerStatus)) {
+      return res.status(400).json({ message: 'Invalid winner status' });
+    }
+
+    const registration = await Registration.findById(req.params.id)
+      .populate('eventId')
+      .populate('userId');
+    
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    if (registration.paymentStatus !== 'completed') {
+      return res.status(400).json({ message: 'Can only set winner status for completed registrations' });
+    }
+
+    const User = require('../models/User');
+    const oldStatus = registration.winnerStatus;
+    const event = registration.eventId;
+
+    // Calculate prize money change
+    let prizeChange = 0;
+    
+    // Remove old prize if any
+    if (oldStatus === 'winner' && event.winnerPrize) {
+      prizeChange -= event.winnerPrize;
+    } else if (oldStatus === 'runner' && event.runnerPrize) {
+      prizeChange -= event.runnerPrize;
+    }
+    
+    // Add new prize if any
+    if (winnerStatus === 'winner' && event.winnerPrize) {
+      prizeChange += event.winnerPrize;
+    } else if (winnerStatus === 'runner' && event.runnerPrize) {
+      prizeChange += event.runnerPrize;
+    }
+
+    // Update registration
+    registration.winnerStatus = winnerStatus;
+    await registration.save();
+
+    // Update team leader's (userId) total amount won
+    if (prizeChange !== 0) {
+      const teamLeader = await User.findById(registration.userId);
+      if (teamLeader) {
+        teamLeader.totalAmountWon = Math.max(0, (teamLeader.totalAmountWon || 0) + prizeChange);
+        await teamLeader.save();
+      }
+    }
+
+    // Also update all team members' winner status (for tracking)
+    // Team members are identified by their emails in teamMembers array
+    if (Array.isArray(registration.teamMembers) && registration.teamMembers.length > 0) {
+      const memberEmails = registration.teamMembers
+        .map(m => m.email)
+        .filter(Boolean)
+        .map(e => e.toLowerCase());
+      
+      if (memberEmails.length > 0) {
+        // Find all users with these emails and update their records if needed
+        // This is optional - you can track team member wins separately if needed
+      }
+    }
+
+    res.json({ 
+      message: 'Winner status updated successfully',
+      registration,
+      prizeChange
+    });
+  } catch (error) {
+    console.error('Set winner status error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route DELETE /api/registrations/:id
 // @desc Cancel registration
 // @access Private

@@ -28,13 +28,34 @@ export default function EventDetails() {
   const [isRegistered, setIsRegistered] = useState(false);
   const [hasBasicRegistration, setHasBasicRegistration] = useState(true);
   const [parentEventName, setParentEventName] = useState('');
+  const [winners, setWinners] = useState([]);
 
   useEffect(() => {
     let mounted = true;
     setLoading(true);
     fetchWithLoading(`/api/events/${id}`)
       .then((r) => r.json())
-      .then((data) => { if (mounted) setEvent(data); })
+      .then((data) => { 
+        if (mounted) {
+          setEvent(data);
+          // Fetch winners if event is completed
+          const eventDate = data?.date ? new Date(data.date) : null;
+          if (eventDate && eventDate < new Date()) {
+            // Event has ended, fetch winners
+            fetchWithLoading(`/api/registrations/event/${id}`)
+              .then(r => r.json())
+              .then(registrations => {
+                if (mounted && Array.isArray(registrations)) {
+                  const winnersList = registrations.filter(r => 
+                    r.winnerStatus && r.winnerStatus !== 'none' && r.paymentStatus === 'completed'
+                  );
+                  setWinners(winnersList);
+                }
+              })
+              .catch(() => {});
+          }
+        }
+      })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
   }, [id]);
@@ -306,6 +327,110 @@ export default function EventDetails() {
                     Register for {parentEventName}
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Winners Section - Show for completed events */}
+          {status === 'Ended' && winners.length > 0 && (
+            <div className="ed-block" style={{
+              background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+              border: '2px solid #f59e0b',
+              borderRadius: 12,
+              padding: 20,
+              marginBottom: 16,
+              boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
+            }}>
+              <h3 style={{ 
+                margin: '0 0 16px 0', 
+                color: '#92400e', 
+                fontSize: 18, 
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                🏆 Winners & Runners-up
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {winners.filter(w => w.winnerStatus === 'winner').map((winner, idx) => (
+                  <div key={idx} style={{
+                    background: 'linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%)',
+                    border: '2px solid #22c55e',
+                    borderRadius: 10,
+                    padding: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 10
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 24 }}>🥇</span>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#166534', fontSize: 16 }}>
+                          {winner.teamName || (winner.teamMembers && winner.teamMembers[0]?.name) || 'Winner'}
+                        </div>
+                        {winner.teamName && winner.teamMembers && winner.teamMembers.length > 0 && (
+                          <div style={{ fontSize: 13, color: '#15803d', marginTop: 2 }}>
+                            Team Members: {winner.teamMembers.map(m => m.name).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {event.winnerPrize > 0 && (
+                      <div style={{
+                        background: '#22c55e',
+                        color: 'white',
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        fontWeight: 700,
+                        fontSize: 14
+                      }}>
+                        ₹{event.winnerPrize}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {winners.filter(w => w.winnerStatus === 'runner').map((runner, idx) => (
+                  <div key={idx} style={{
+                    background: 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                    border: '2px solid #f59e0b',
+                    borderRadius: 10,
+                    padding: 14,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: 10
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 24 }}>🥈</span>
+                      <div>
+                        <div style={{ fontWeight: 700, color: '#92400e', fontSize: 16 }}>
+                          {runner.teamName || (runner.teamMembers && runner.teamMembers[0]?.name) || 'Runner-up'}
+                        </div>
+                        {runner.teamName && runner.teamMembers && runner.teamMembers.length > 0 && (
+                          <div style={{ fontSize: 13, color: '#b45309', marginTop: 2 }}>
+                            Team Members: {runner.teamMembers.map(m => m.name).join(', ')}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {event.runnerPrize > 0 && (
+                      <div style={{
+                        background: '#f59e0b',
+                        color: 'white',
+                        padding: '6px 12px',
+                        borderRadius: 6,
+                        fontWeight: 700,
+                        fontSize: 14
+                      }}>
+                        ₹{event.runnerPrize}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           )}
