@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import api from '../utils/api';
 import useAuthStore from '../store/authStore';
 import SkeletonCard from '../components/SkeletonCard/SkeletonCard';
@@ -20,6 +20,8 @@ const MyEvents = () => {
   const [certReg, setCertReg] = useState(null);
   const [certIndex, setCertIndex] = useState(0); // no longer used for navigation; kept for minimal change
   const [filter, setFilter] = useState('all'); // 'all', 'completed', 'upcoming'
+  const winRefs = useRef({});
+  const firedWinIdsRef = useRef(new Set());
 
   // Fetch registrations
   useEffect(() => {
@@ -106,6 +108,69 @@ const MyEvents = () => {
     });
   }, [items, myFeedbackEventIds, user]);
 
+  // Confetti per winning card: fire when the card becomes visible
+  useEffect(() => {
+    const loadScript = (src) => new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = src; s.async = true; s.onload = resolve; s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    const ensureConfetti = async () => {
+      if (window.confetti) return window.confetti;
+      const cdns = [
+        'https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js',
+        'https://unpkg.com/canvas-confetti@1.6.0/dist/confetti.browser.min.js',
+      ];
+      for (const url of cdns) {
+        try { await loadScript(url); if (window.confetti) break; } catch (_) {}
+      }
+      return window.confetti || null;
+    };
+    const inViewport = (el) => {
+      if (!el) return false;
+      const r = el.getBoundingClientRect();
+      return r.top < window.innerHeight && r.bottom > 0 && r.left < window.innerWidth && r.right > 0;
+    };
+    const fireAtEl = async (el) => {
+      const confetti = await ensureConfetti();
+      if (!confetti || !el) return;
+      const rect = el.getBoundingClientRect();
+      const x = (rect.left + rect.width / 2) / window.innerWidth;
+      const y = (rect.top + rect.height / 2) / window.innerHeight;
+      const burst = (opts) => confetti({ particleCount: 100, spread: 80, origin: { x, y }, ...opts });
+      burst();
+      setTimeout(() => burst({ particleCount: 140, spread: 100 }), 300);
+    };
+
+    const checkAndFire = () => {
+      (Array.isArray(items) ? items : [])
+        .filter((r) => r?.winnerStatus && r.winnerStatus !== 'none')
+        .forEach((r) => {
+          const id = String(r._id || r.eventId?._id || Math.random());
+          if (firedWinIdsRef.current.has(id)) return;
+          let el = winRefs.current[id];
+          if (!el) {
+            el = document.querySelector(`[data-reg-id="${CSS.escape(id)}"][data-win="true"]`);
+            if (el) winRefs.current[id] = el;
+          }
+          if (el && inViewport(el)) {
+            firedWinIdsRef.current.add(id);
+            fireAtEl(el);
+          }
+        });
+    };
+
+    // Run after paint so refs have a chance to attach
+    setTimeout(checkAndFire, 0);
+    const onScroll = () => checkAndFire();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [items]);
+
   const openFeedback = (reg) => {
     setActiveEvent(reg);
     setRating(0);
@@ -141,7 +206,18 @@ const MyEvents = () => {
   const totalEvents = viewItems.length;
   const completedEvents = viewItems.filter(r => r.paymentStatus === 'completed' && r.eventPast).length;
   const upcomingEvents = viewItems.filter(r => !r.eventPast && r.paymentStatus === 'completed').length;
-  const totalWon = user?.totalAmountWon || 0; // Total prize money won by the user
+  const totalWon = useMemo(() => {
+    try {
+      const regs = Array.isArray(viewItems) ? viewItems : [];
+      return regs.reduce((sum, r) => {
+        const status = r?.winnerStatus || 'none';
+        const ev = r?.eventId || {};
+        if (status === 'winner') return sum + Number(ev.winnerPrize || 0);
+        if (status === 'runner') return sum + Number(ev.runnerPrize || 0);
+        return sum;
+      }, 0);
+    } catch { return 0; }
+  }, [viewItems]);
 
   // Filter events based on selected filter (MUST be before any conditional returns)
   const filteredItems = useMemo(() => {
@@ -270,12 +346,39 @@ const MyEvents = () => {
         {!loading && filteredItems.length > 0 && (
           <div className="events-grid">
             {filteredItems.map((r) => (
-              <div className="event-card" key={r._id}>
-                <div className="event-card-header">
+              <div
+                className="event-card"
+                key={r._id}
+                ref={(el) => {
+                  // Track only winning/runner cards for confetti targeting
+                  const isWin = r?.winnerStatus && r.winnerStatus !== 'none';
+                  if (!isWin) return;
+                  const id = String(r._id || r.eventId?._id || '');
+                  if (id) winRefs.current[id] = el;
+                }}
+                data-reg-id={String(r._id || '')}
+                data-win={r?.winnerStatus && r.winnerStatus !== 'none' ? 'true' : undefined}
+              >
+                <div className="event-card-header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:8 }}>
                   <h3 className="event-title">{r.eventId?.name || '—'}</h3>
-                  <span className={`status-badge ${r.paymentStatus === 'completed' ? 'completed' : r.paymentStatus === 'pending' ? 'pending' : ''}`}>
-                    {r.paymentStatus === 'completed' ? 'Payment Completed' : r.paymentStatus === 'pending' ? 'Pending' : r.paymentStatus}
-                  </span>
+                  <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                    <span className={`status-badge ${r.paymentStatus === 'completed' ? 'completed' : r.paymentStatus === 'pending' ? 'pending' : ''}`}>
+                      {r.paymentStatus === 'completed' ? 'Payment Completed' : r.paymentStatus === 'pending' ? 'Pending' : r.paymentStatus}
+                    </span>
+                    {r.winnerStatus && r.winnerStatus !== 'none' && (
+                      <span
+                        className="status-badge"
+                        style={{
+                          background: r.winnerStatus === 'winner' ? '#22c55e' : '#f59e0b',
+                          color: '#fff'
+                        }}
+                        aria-label={r.winnerStatus === 'winner' ? 'Winner' : 'Runner-up'}
+                        title={r.winnerStatus === 'winner' ? 'Winner' : 'Runner-up'}
+                      >
+                        {r.winnerStatus === 'winner' ? 'Winner' : 'Runner-up'}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="event-details">

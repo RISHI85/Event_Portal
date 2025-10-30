@@ -40,6 +40,7 @@ const LiveEvents = () => {
     const params = new URLSearchParams();
     params.set('status', status);
     params.set('isMainEvent', 'false'); // show only sub-events
+    params.set('includeRegCount', 'true');
     if (status === 'upcoming' && ['today', 'this_week', 'this_month'].includes(timeframe)) {
       params.set('timeframe', timeframe);
     }

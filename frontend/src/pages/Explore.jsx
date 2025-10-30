@@ -147,10 +147,11 @@ const Explore = () => {
       params.set('department', 'Common');
       params.set('isMainEvent', 'true');
     }
-    // Ask backend to include hasSubEvents flag for main events
+    // Ask backend to include hasSubEvents flag for main events and registration counts
     if (!searchParams.get('parent')) {
       params.set('includeSubCount', 'true');
     }
+    params.set('includeRegCount', 'true');
 
     setLoading(true);
     fetchWithLoading(`/api/events?${params.toString()}`)
@@ -478,6 +479,7 @@ const Explore = () => {
                     <p><strong>Date & Time:</strong> {new Date(ev.date).toLocaleDateString()} • {ev.time}</p>
                     <p><strong>Venue:</strong> {ev.location}</p>
                     <p>Fee (team total): ₹{Number(ev.registrationDetails?.feePerHead || 0)}</p>
+                    <p>{Number(ev.registrationCount || 0)} registered</p>
                     {ev.isMainEvent && !searchParams.get('parent') && ev.hasSubEvents && (
                       <a className="btn-secondary" href={`/explore?parent=${ev._id}`}>View Sub Events</a>
                     )}

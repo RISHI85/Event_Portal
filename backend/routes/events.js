@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
+const Registration = require('../models/Registration');
 const { auth, adminAuth } = require('../middleware/auth');
 
 // @route GET /api/events
@@ -92,6 +93,25 @@ router.get('/', async (req, res) => {
 
     let events = await query;
 
+    // Optionally include registration counts (completed payments only)
+    if (req.query.includeRegCount === 'true' && Array.isArray(events) && events.length) {
+      const ids = events.map((e) => e._id);
+      try {
+        const regCounts = await Registration.aggregate([
+          { $match: { eventId: { $in: ids }, paymentStatus: 'completed' } },
+          { $group: { _id: '$eventId', count: { $sum: 1 } } }
+        ]);
+        const map = new Map(regCounts.map((x) => [String(x._id), x.count]));
+        events = events.map((doc) => {
+          const o = doc.toObject ? doc.toObject() : doc;
+          o.registrationCount = map.get(String(doc._id)) || 0;
+          return o;
+        });
+      } catch (e) {
+        // On error, fall back without counts
+      }
+    }
+
     // Optionally include hasSubEvents flag for each event
     if (includeSubCount === 'true') {
       const mainIds = events.filter((e) => e.isMainEvent).map((e) => e._id);
@@ -102,12 +122,17 @@ router.get('/', async (req, res) => {
         ]);
         const countMap = new Map(counts.map((c) => [String(c._id), c.count]));
         events = events.map((doc) => {
-          const obj = doc.toObject();
-          obj.hasSubEvents = (countMap.get(String(doc._id)) || 0) > 0;
-          return obj;
+          const base = doc && typeof doc.toObject === 'function' ? doc.toObject() : doc;
+          return {
+            ...base,
+            hasSubEvents: (countMap.get(String(doc._id)) || 0) > 0,
+          };
         });
       } else {
-        events = events.map((doc) => ({ ...doc.toObject(), hasSubEvents: false }));
+        events = events.map((doc) => {
+          const base = doc && typeof doc.toObject === 'function' ? doc.toObject() : doc;
+          return { ...base, hasSubEvents: false };
+        });
       }
     }
 
@@ -232,7 +257,6 @@ router.post('/', adminAuth, async (req, res) => {
       runnerPrize: Number(runnerPrize || 0),
       createdBy: req.user._id
     });
-
     await event.save();
     await event.populate('createdBy', 'email role');
 

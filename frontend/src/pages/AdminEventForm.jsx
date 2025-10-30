@@ -113,12 +113,15 @@ const AdminEventForm = () => {
         setBasicRegistrationAmount(Number(data.basicRegistrationAmount || 0));
         setWinnerPrize(Number(data.winnerPrize || 0));
         setRunnerPrize(Number(data.runnerPrize || 0));
+        // no custom schema-driven fields
       } catch (e) {
         toast.error('Failed to load event');
       }
     };
     load();
   }, [id, parentFromQuery]);
+
+  // no schema loading
 
   const uploadImage = async (file) => {
     // Validate file type
@@ -204,6 +207,8 @@ const AdminEventForm = () => {
       payload.winnerPrize = Number(winnerPrize || 0);
       payload.runnerPrize = Number(runnerPrize || 0);
 
+      // no customFields in payload
+
       if (id) {
         await api.put(`/api/events/${id}`, payload);
         toast.success('Event updated');
@@ -242,7 +247,7 @@ const AdminEventForm = () => {
           {/* Basic Information Card */}
           <fieldset className="card-like">
             <legend>📋 Basic Information</legend>
-            
+
             <label>Event Name</label>
             <input placeholder="Enter event name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
 
@@ -321,6 +326,8 @@ const AdminEventForm = () => {
               </>
             )}
           </fieldset>
+
+          {/* No schema-driven Event Details section */}
 
           {/* Faculty Coordinators */}
           <fieldset className="card-like">

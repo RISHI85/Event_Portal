@@ -867,6 +867,12 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
 
     // Update registration
     registration.winnerStatus = winnerStatus;
+    
+    // Ensure registrationType exists for old documents (backward compatibility)
+    if (!registration.registrationType) {
+      registration.registrationType = 'internal'; // Default to internal for old records
+    }
+    
     await registration.save();
 
     // Update team leader's (userId) total amount won
