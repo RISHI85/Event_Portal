@@ -29,14 +29,6 @@ const ExploreEvents = () => {
       icon: '🎭',
       color: '#f59e0b',
       link: '/explore?category=others'
-    },
-    {
-      id: 'common',
-      title: 'Common Events',
-      description: 'Events open to all departments and students',
-      icon: '🌟',
-      color: '#10b981',
-      link: '/explore/common'
     }
   ];
 

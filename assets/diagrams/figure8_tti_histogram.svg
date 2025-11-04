@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Histogram of client render durations">
+  <title>Figure 8: Client Render Duration Histogram</title>
+  <desc>Placeholder histogram showing distribution of render durations/TTI across devices.</desc>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="480" y="30" text-anchor="middle" font-family="Arial" font-size="18">Client Render Duration Histogram</text>
+  <line x1="80" y1="80" x2="80" y2="480" stroke="#ccc"/>
+  <line x1="80" y1="480" x2="880" y2="480" stroke="#ccc"/>
+  <text x="40" y="270" text-anchor="middle" font-family="Arial" font-size="12" transform="rotate(-90 40,270)">Y: Frequency (sessions/devices)</text>
+  <text x="480" y="520" text-anchor="middle" font-family="Arial" font-size="12">X: Render time / TTI (ms, bucketed)</text>
+  <g fill="#14b8a6">
+    <rect x="120" y="420" width="50" height="60"/>
+    <rect x="200" y="380" width="50" height="100"/>
+    <rect x="280" y="320" width="50" height="160"/>
+    <rect x="360" y="260" width="50" height="220"/>
+    <rect x="440" y="280" width="50" height="200"/>
+    <rect x="520" y="340" width="50" height="140"/>
+    <rect x="600" y="400" width="50" height="80"/>
+    <rect x="680" y="430" width="50" height="50"/>
+  </g>
+  <text x="880" y="500" text-anchor="end" font-family="Arial" font-size="12">Render time (ms)</text>
+</svg>

@@ -1,0 +1,31 @@
+%% Figure 1: High-level System Architecture (Mermaid)
+flowchart LR
+  subgraph Client[React Frontend]
+    NAV[Discovery & Navigation\n- Search (debounced)\n- Breadcrumbs]
+    DETAILS[Event Details Experience\n- Countdown\n- Add to Calendar\n- Share\n- FAQ\n- Similar Events]
+    CHECKOUT[Payment & Checkout\n- Form + Sticky Summary\n- Trust Indicators]
+    CATALOG[Event Catalog\n- Stepcone Events\n- Badges & Status]
+    OBS[Observability & Guardrails\n- Toasts\n- Skeletons\n- ARIA\n- Cleanup]
+  end
+
+  subgraph API[Backend REST APIs]
+    AUTH[Auth Service]
+    EVENTS[Events Service]
+    REGS[Registrations Service]
+    PAY[Payments Service]
+  end
+
+  PGW[External Payment Gateway]
+
+  NAV -- GET /events?q=... --> EVENTS
+  NAV -- GET /events/:id --> EVENTS
+  DETAILS -- GET /events/:id --> EVENTS
+  DETAILS -- GET /events?dept=... (similar) --> EVENTS
+  CHECKOUT -- POST /registrations --> REGS
+  CHECKOUT -- POST /payments/create --> PAY
+  PAY -- capture/verify --> PGW
+
+  EVENTS -. JSON .-> Client
+  AUTH -. tokens .-> Client
+  REGS -. registration status .-> Client
+  PAY -. payment status .-> Client

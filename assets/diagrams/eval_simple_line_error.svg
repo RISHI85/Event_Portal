@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Simple error rate over time">
+  <title>Error Rate Over Time (Simple)</title>
+  <desc>Line showing error rate (%) across time with clear axis labels and a spike annotation.</desc>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="480" y="36" text-anchor="middle" font-family="Arial" font-size="20">Error Rate Over Time</text>
+  <line x1="100" y1="100" x2="100" y2="460" stroke="#e5e7eb"/>
+  <line x1="100" y1="460" x2="860" y2="460" stroke="#e5e7eb"/>
+  <text x="50" y="280" text-anchor="middle" font-family="Arial" font-size="12" transform="rotate(-90 50,280)">Y: Error rate (%)</text>
+  <text x="480" y="500" text-anchor="middle" font-family="Arial" font-size="12">X: Time (minutes)</text>
+  <polyline fill="none" stroke="#ef4444" stroke-width="3" points="100,440 220,430 340,420 460,410 580,300 700,360 860,350"/>
+  <circle cx="580" cy="300" r="5" fill="#ef4444"/>
+  <text x="600" y="295" font-family="Arial" font-size="12">Spike</text>
+</svg>

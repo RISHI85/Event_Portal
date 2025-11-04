@@ -10,7 +10,7 @@
 ### **Event Details Page**
 4. ✅ **Breadcrumb Navigation** - Shows path: Home > Events > Event Name
 5. ✅ **Social Sharing Buttons** - Share to WhatsApp, Twitter, LinkedIn, Facebook
-6. ✅ **Countdown Timer** - Real-time countdown for upcoming events
+6. ✅ **Countdown Timer** -  Real-time countdown for upcoming events
 7. ✅ **Add to Calendar** - Google, Outlook, Apple Calendar integration
 8. ✅ **FAQ Section** - Auto-generated FAQs from event data
 9. ✅ **Similar Events** - Shows 3 related events

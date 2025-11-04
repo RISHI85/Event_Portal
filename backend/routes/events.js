@@ -161,25 +161,35 @@ router.get('/departments/list', async (req, res) => {
 // @access Public
 router.get('/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-
-    // Validate ObjectId format
-    if (!id || typeof id !== 'string' || !id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ message: 'Invalid event ID format' });
-    }
-
-    const event = await Event.findById(id)
-      .populate('createdBy', 'email role')
-      .populate('parentEvent', 'name');
-
+    const event = await Event.findById(req.params.id)
+      .populate('parentEvent', 'name')
+      .populate('createdBy', 'name email')
+      .populate({
+        path: 'winners.registrationId',
+        select: 'teamName teamMembers paymentStatus'
+      });
+      
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    res.json(event);
+    // Transform winners data for frontend
+    const eventObj = event.toObject();
+    
+    if (eventObj.winners) {
+      eventObj.winners = eventObj.winners.map(winner => ({
+        ...winner,
+        teamName: winner.teamName || (winner.registrationId?.teamName || ''),
+        participantName: winner.participantName || 
+                        (winner.registrationId?.teamMembers?.[0]?.name || ''),
+        paymentStatus: winner.registrationId?.paymentStatus
+      }));
+    }
+
+    res.json(eventObj);
   } catch (error) {
     console.error('Get event error:', error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
@@ -380,6 +390,160 @@ router.delete('/:id', adminAuth, async (req, res) => {
   } catch (error) {
     console.error('Delete event error:', error);
     res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// @route   POST /api/events/:id/complete
+// @desc    Mark event as completed and declare winners
+// @access  Admin
+router.post('/:id/complete', adminAuth, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
+  try {
+    const { winners } = req.body; // Array of { registrationId, position, prizeMoney }
+    
+    // Update event
+    const event = await Event.findByIdAndUpdate(
+      req.params.id,
+      { 
+        isCompleted: true,
+        completedAt: new Date(),
+        $push: { 
+          winners: { 
+            $each: winners.map(winner => ({
+              registrationId: winner.registrationId,
+              position: winner.position,
+              teamName: winner.teamName,
+              participantName: winner.participantName,
+              prizeMoney: winner.prizeMoney
+            }))
+          } 
+        }
+      },
+      { new: true, session }
+    );
+
+    if (!event) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Update registrations
+    await Promise.all(winners.map(winner => 
+      Registration.findByIdAndUpdate(
+        winner.registrationId, 
+        { 
+          winnerStatus: winner.position,
+          certificateType: 'achievement'
+        },
+        { session }
+      )
+    ));
+
+    // Get all registrations for this event
+    const allRegistrations = await Registration.find({ eventId: event._id }, null, { session });
+    
+    // Send notifications
+    const { sendCertificateEmail } = require('../utils/certificateGenerator');
+    await Promise.all(allRegistrations.map(async (reg) => {
+      const winner = winners.find(w => w.registrationId === reg._id.toString());
+      const position = winner ? winner.position : 'none';
+      
+      try {
+        await sendCertificateEmail(event, reg, position);
+        reg.certificateSent = true;
+        await reg.save({ session });
+      } catch (error) {
+        console.error(`Failed to send email to ${reg.teamName || reg.teamMembers?.[0]?.email}:`, error);
+      }
+    }));
+
+    await session.commitTransaction();
+    session.endSession();
+    
+    res.json({ 
+      success: true, 
+      message: 'Event completed successfully. Certificates have been sent to all participants.' 
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Error completing event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/events/:id/winners
+// @desc    Get event winners
+// @access  Public
+router.get('/:id/winners', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+      .populate('winners.registrationId', 'teamName teamMembers');
+    
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    res.json({
+      eventName: event.name,
+      isCompleted: event.isCompleted,
+      completedAt: event.completedAt,
+      winners: event.winners.map(winner => ({
+        position: winner.position,
+        teamName: winner.teamName || winner.registrationId.teamName,
+        participantName: winner.participantName,
+        prizeMoney: winner.prizeMoney,
+        teamMembers: winner.registrationId.teamMembers
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching winners:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// @route   GET /api/events/:id/certificate
+// @desc    Download certificate for an event registration
+// @access  Private
+router.get('/:id/certificate', auth, async (req, res) => {
+  try {
+    const { registrationId } = req.query;
+    
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const registration = await Registration.findOne({
+      _id: registrationId,
+      userId: req.user.id,
+      eventId: event._id
+    });
+
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    const { generateCertificate } = require('../utils/certificateGenerator');
+    const pdfBuffer = await generateCertificate(
+      event, 
+      registration, 
+      registration.winnerStatus !== 'none' ? registration.winnerStatus : 'none'
+    );
+
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${event.name.replace(/\s+/g, '_')}_${registration.winnerStatus || 'participation'}_certificate.pdf"`,
+      'Content-Length': pdfBuffer.length
+    });
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('Certificate generation error:', error);
+    res.status(500).json({ message: 'Error generating certificate', error: error.message });
   }
 });
 

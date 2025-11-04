@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Latency scatter vs requests per second">
+  <title>Figure 5: Latency vs Throughput</title>
+  <desc>Placeholder scatter plot of requests per second vs 95th percentile latency.</desc>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="480" y="30" text-anchor="middle" font-family="Arial" font-size="18">Latency vs Throughput</text>
+  <line x1="80" y1="80" x2="80" y2="480" stroke="#ccc"/>
+  <line x1="80" y1="480" x2="880" y2="480" stroke="#ccc"/>
+  <text x="480" y="520" text-anchor="middle" font-family="Arial" font-size="12">X: Requests per second (RPS)</text>
+  <text x="40" y="270" text-anchor="middle" font-family="Arial" font-size="12" transform="rotate(-90 40,270)">Y: 95th percentile latency (ms)</text>
+  <!-- Points -->
+  <g fill="#14b8a6" opacity="0.8">
+    <circle cx="150" cy="440" r="5"/>
+    <circle cx="220" cy="420" r="5"/>
+    <circle cx="300" cy="400" r="5"/>
+    <circle cx="380" cy="380" r="5"/>
+    <circle cx="460" cy="360" r="5"/>
+    <circle cx="540" cy="350" r="5"/>
+    <circle cx="620" cy="335" r="5"/>
+    <circle cx="700" cy="330" r="5"/>
+    <circle cx="780" cy="325" r="5"/>
+  </g>
+  <!-- Trendline -->
+  <line x1="150" y1="440" x2="780" y2="325" stroke="#0ea5e9" stroke-dasharray="6,4"/>
+</svg>

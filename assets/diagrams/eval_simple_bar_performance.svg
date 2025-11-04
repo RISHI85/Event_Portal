@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540" role="img" aria-label="Simple performance bars: page load and search latency vs targets">
+  <title>Performance Bars: Load vs Search</title>
+  <desc>Two labeled bars showing page load time and search latency against targets for quick understanding.</desc>
+  <rect width="100%" height="100%" fill="#ffffff"/>
+  <text x="480" y="36" text-anchor="middle" font-family="Arial" font-size="20">Performance vs Target</text>
+
+  <!-- Axes base -->
+  <line x1="160" y1="140" x2="800" y2="140" stroke="#e5e7eb"/>
+  <line x1="160" y1="260" x2="800" y2="260" stroke="#e5e7eb"/>
+
+  <!-- Targets -->
+  <line x1="480" y1="120" x2="480" y2="300" stroke="#ef4444" stroke-dasharray="6,4"/>
+  <text x="485" y="118" font-family="Arial" font-size="12" fill="#ef4444">Target</text>
+
+  <!-- Page Load bar (seconds) -->
+  <text x="120" y="146" text-anchor="end" font-family="Arial" font-size="14">Page Load (s)</text>
+  <!-- Scale: 0s at 160, each 0.5s = 64px; show 2.8s -> 160 + 2.8/0.5*64 = 160 + 358.4 ≈ 518 -->
+  <rect x="160" y="120" width="358" height="40" fill="#38bdf8"/>
+  <text x="525" y="146" font-family="Arial" font-size="12">2.8s</text>
+  <!-- Target at 3.0s -> around 544px (close to 480 line for visual simplicity) -->
+
+  <!-- Search Latency bar (ms) -->
+  <text x="120" y="266" text-anchor="end" font-family="Arial" font-size="14">Search (ms)</text>
+  <!-- Scale: 0ms at 160, 50ms = 64px; 420ms -> 160 + 420/50*64 = 160 + 537.6 ≈ 698 -->
+  <rect x="160" y="240" width="538" height="40" fill="#34d399"/>
+  <text x="705" y="266" font-family="Arial" font-size="12">420ms</text>
+
+  <!-- Legend and axis labels -->
+  <text x="480" y="520" text-anchor="middle" font-family="Arial" font-size="12">X: Duration (scaled), Y: Metrics</text>
+  <text x="40" y="270" text-anchor="middle" font-family="Arial" font-size="12" transform="rotate(-90 40,270)">Performance vs Target</text>
+</svg>

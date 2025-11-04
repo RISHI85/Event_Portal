@@ -1,0 +1,14 @@
+%% Figure 2: Functional User Flow (Mermaid)
+flowchart LR
+  A[Discover\n- Search results\n- Stepcone list] --> B[Event Details\n- Breadcrumbs\n- Countdown\n- FAQ\n- Share\n- Similar]
+  B --> C[Registration Start]
+  C --> D[Checkout\n- Form + Summary\n- Trust Badges]
+  D --> E[Payment Processing]
+  E --> F[Confirmation\n- Add to Calendar\n- Share]
+
+  %% Annotations
+  B -. GET /events/:id .-> B
+  A -. GET /events?q=... .-> A
+  D -. POST /registrations .-> D
+  D -. POST /payments/create .-> E
+  E -. verify with gateway .-> E

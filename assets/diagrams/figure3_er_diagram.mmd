@@ -1,0 +1,49 @@
+%% Figure 3: ER Diagram (Mermaid)
+erDiagram
+  USER ||--o{ REGISTRATION : makes
+  EVENT ||--o{ REGISTRATION : has
+  EVENT ||--o{ PAYMENT : may_have
+  USER ||--o{ PAYMENT : initiates
+
+  USER {
+    string userId PK
+    string name
+    string email
+    string role
+    string department
+  }
+
+  EVENT {
+    string id PK
+    string title
+    string department
+    string category
+    datetime startDateTime
+    datetime endDateTime
+    string location
+    number price
+    boolean isPaid
+    string status
+  }
+
+  REGISTRATION {
+    string registrationId PK
+    string eventId FK
+    string userId FK
+    boolean team
+    datetime registeredAt
+    string status
+    string paymentId
+  }
+
+  PAYMENT {
+    string paymentId PK
+    string orderId
+    string eventId FK
+    string userId FK
+    number amount
+    string currency
+    string status
+    string provider
+    datetime createdAt
+  }

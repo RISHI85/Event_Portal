@@ -35,7 +35,7 @@ export default function EventDetails() {
     setLoading(true);
     fetchWithLoading(`/api/events/${id}`)
       .then((r) => r.json())
-      .then((data) => { 
+      .then((data) => {
         if (mounted) {
           setEvent(data);
           // Fetch winners if event is completed
@@ -46,13 +46,13 @@ export default function EventDetails() {
               .then(r => r.json())
               .then(registrations => {
                 if (mounted && Array.isArray(registrations)) {
-                  const winnersList = registrations.filter(r => 
+                  const winnersList = registrations.filter(r =>
                     r.winnerStatus && r.winnerStatus !== 'none' && r.paymentStatus === 'completed'
                   );
                   setWinners(winnersList);
                 }
               })
-              .catch(() => {});
+              .catch(() => { });
           }
         }
       })
@@ -62,7 +62,7 @@ export default function EventDetails() {
 
   // Determine if the current user has registered for this event
   useEffect(() => {
-    if (!isAuthenticated) { 
+    if (!isAuthenticated) {
       setIsRegistered(false);
       setHasBasicRegistration(true);
       return;
@@ -82,7 +82,7 @@ export default function EventDetails() {
           });
         }
         setIsRegistered(setIds.has(String(id)));
-        
+
         // Check if this is a Stepcone sub-event and if user has basic registration
         // Only Stepcone events require basic registration, not student chapter events
         if (event && !event.isMainEvent && event.parentEvent) {
@@ -91,11 +91,11 @@ export default function EventDetails() {
             .then(r => r.json())
             .then(parentData => {
               if (!mounted) return;
-              
+
               // Check if parent event name contains "stepcone" (case-insensitive)
-              const isStepconeEvent = parentData.name && 
+              const isStepconeEvent = parentData.name &&
                 parentData.name.toLowerCase().includes('stepcone');
-              
+
               if (isStepconeEvent) {
                 // Only check basic registration for Stepcone events
                 const hasBasic = setIds.has(String(event.parentEvent));
@@ -142,11 +142,11 @@ export default function EventDetails() {
   const faculty = event?.adminContacts?.[0]?.name || '—';
   const student = event?.adminContacts?.[1]?.name || '—';
   const type = event?.registrationDetails?.teamParticipation ? 'Team Event' : 'Individual Event';
-  
+
   // Check eligibility based on department (case-insensitive)
   const eligibleDepts = event?.eligibleDepartments || [];
   const userDept = user?.department;
-  const isEligible = eligibleDepts.length === 0 || (userDept && eligibleDepts.some(dept => 
+  const isEligible = eligibleDepts.length === 0 || (userDept && eligibleDepts.some(dept =>
     dept.trim().toLowerCase() === userDept.trim().toLowerCase()
   ));
   const isAdmin = user?.role === 'admin';
@@ -161,12 +161,12 @@ export default function EventDetails() {
   return (
     <section className="event-details container">
       <Breadcrumb items={breadcrumbItems} />
-      
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div></div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
           <AddToCalendar event={event} />
-          <ShareButtons 
+          <ShareButtons
             url={window.location.href}
             title={event.name}
             description={event.description}
@@ -192,41 +192,41 @@ export default function EventDetails() {
           )}
         </div>
 
-        <div 
+        <div
           className="ed-panel"
         >
-          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
-            <h1 className="ed-title" style={{marginBottom:0}}>{event.name}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+            <h1 className="ed-title" style={{ marginBottom: 0 }}>{event.name}</h1>
             {!isEligible && (
-              <span 
-                className="status-pill" 
+              <span
+                className="status-pill"
                 style={{
-                  background:'#6b7280',
-                  color:'white',
-                  fontWeight:'bold'
+                  background: '#6b7280',
+                  color: 'white',
+                  fontWeight: 'bold'
                 }}
               >
                 Not Eligible
               </span>
             )}
             {isRegistered && (
-              <span className="status-pill" style={{background:'#e0f2fe',color:'#0284c7'}}>Registered</span>
+              <span className="status-pill" style={{ background: '#e0f2fe', color: '#0284c7' }}>Registered</span>
             )}
           </div>
 
           <div className="ed-meta">
             <span className="meta-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.5"/>
-                <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="1.5"/>
+                <rect x="3" y="5" width="18" height="16" rx="3" stroke="currentColor" strokeWidth="1.5" />
+                <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="1.5" />
               </svg>
               <span>{dateStr}</span>
             </span>
             {timeStr && (
               <span className="meta-item">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5"/>
-                  <path d="M12 7v6l4 2" stroke="currentColor" strokeWidth="1.5"/>
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+                  <path d="M12 7v6l4 2" stroke="currentColor" strokeWidth="1.5" />
                 </svg>
                 <span>{timeStr}</span>
               </span>
@@ -236,8 +236,8 @@ export default function EventDetails() {
           <div className="ed-sub">
             <span className="meta-item">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
-                <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+                <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.5" />
               </svg>
               <span>{location}</span>
             </span>
@@ -263,7 +263,7 @@ export default function EventDetails() {
             {eligibleDepts.length > 0 && (
               <div className="row">
                 <span className="key">Eligible Departments</span>
-                <span className="val" style={{color: !isEligible ? '#4b5563' : undefined, fontWeight: !isEligible ? 'bold' : undefined}}>
+                <span className="val" style={{ color: !isEligible ? '#4b5563' : undefined, fontWeight: !isEligible ? 'bold' : undefined }}>
                   {eligibleDepts.join(', ')}
                 </span>
               </div>
@@ -341,10 +341,10 @@ export default function EventDetails() {
               marginBottom: 16,
               boxShadow: '0 4px 12px rgba(245, 158, 11, 0.2)'
             }}>
-              <h3 style={{ 
-                margin: '0 0 16px 0', 
-                color: '#92400e', 
-                fontSize: 18, 
+              <h3 style={{
+                margin: '0 0 16px 0',
+                color: '#92400e',
+                fontSize: 18,
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
@@ -437,9 +437,9 @@ export default function EventDetails() {
 
           <div className="ed-actions">
             {!isAdmin && !isRegistered && !isEligible && (
-              <button 
-                className="btn-primary-grad" 
-                disabled 
+              <button
+                className="btn-primary-grad"
+                disabled
                 style={{
                   background: '#6b7280',
                   opacity: 0.6,
@@ -454,9 +454,9 @@ export default function EventDetails() {
               <a className="btn-primary-grad" href={`/events/${event._id}/register`}>Register Now</a>
             )}
             {!isAdmin && !isRegistered && isEligible && !hasBasicRegistration && (
-              <button 
-                className="btn-primary-grad" 
-                disabled 
+              <button
+                className="btn-primary-grad"
+                disabled
                 style={{
                   background: '#f59e0b',
                   opacity: 0.6,
@@ -468,7 +468,7 @@ export default function EventDetails() {
               </button>
             )}
             {!isAdmin && isRegistered && (
-              <button className="btn-outline" disabled style={{opacity:.8, cursor:'default'}}>Registered</button>
+              <button className="btn-outline" disabled style={{ opacity: .8, cursor: 'default' }}>Registered</button>
             )}
             <button className="btn-outline" onClick={() => navigate(-1)}>Go Back</button>
           </div>

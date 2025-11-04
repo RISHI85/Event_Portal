@@ -68,6 +68,27 @@ const MyEvents = () => {
     return dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
+    // Download certificate
+  const handleDownloadCertificate = async (event, registration) => {
+    try {
+      const response = await api.get(`/api/events/${event._id}/certificate`, {
+        responseType: 'blob',
+        params: { registrationId: registration._id }
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${event.name}_${registration.winnerStatus || 'participation'}_certificate.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Error downloading certificate:', error);
+      alert('Failed to download certificate. Please try again later.');
+    }
+  };
+
   // Compute enriched view models
   const viewItems = useMemo(() => {
     const now = Date.now();

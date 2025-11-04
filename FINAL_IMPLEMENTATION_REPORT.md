@@ -457,3 +457,155 @@ All features are tested, documented, and ready for deployment!
 **Implementation Date:** October 21, 2025  
 **Version:** 2.0  
 **Status:** ✅ Complete
+
+---
+
+## 1. Methodology
+
+To design and validate the Event Management Portal, we adopt a comprehensive methodological framework with four core elements: the architecture orchestrating event discovery, registration, payment, and engagement; the operational datasets and preprocessing pipelines powering search, analytics, and personalization; the interaction models and rules enabling discovery and transactional flows; and the evaluation setup spanning functional correctness, performance, responsiveness, accessibility, and cross-browser/device reliability. These components form the foundation for a scalable, user-centric, production-ready portal.
+
+## 1.1 System Architecture
+
+The solution follows a modular, service-oriented web architecture. The front end is implemented with `React` and `React Router`, using componentized UI and lightweight client-side logic. The existing backend (APIs and database) remains unchanged and provides services for authentication, events, registrations, and payments. Communication is RESTful, decoupling UI concerns from domain services and enabling independent evolution.
+
+The currently active client-side modules are:
+- **Discovery & Navigation**: Navbar search with debouncing and top results. Breadcrumbs for hierarchical navigation.
+- **Event Details Experience**: Countdown timer, Add to Calendar (Google/Outlook/Apple .ics), Social sharing (WhatsApp, Twitter, LinkedIn, Facebook, copy link), Event FAQ (template-driven from event metadata), Similar Events (department-based, excluding current item).
+- **Payment & Checkout**: Two-column checkout with form and sticky order summary, trust indicators, responsive layout.
+- **Event Catalog**: Stepcone events list with enhanced badges (e.g., “National Level”), categories, and status (Upcoming/Ended).
+- **Observability & Guardrails**: Toasts/notifications, loading states, skeletons, ARIA labels, keyboard navigation, cleanup of timers/intersections.
+
+Modules communicate via route changes, shared state, and REST APIs. The system follows a choreography pattern (no single client orchestrator), improving resilience and enabling incremental enhancement.
+
+Figure 1 provides a schematic overview of the architecture, including front-end modules, API services, and external payment provider integration. Figure 2 illustrates the functional user journey from discovery to post-event confirmation.
+
+- **Figure 1**: High-level architecture diagram showing
+  - React front end with labeled modules: Discovery & Navigation, Event Details Experience, Payment & Checkout, Event Catalog, Observability
+  - REST API services: Auth, Events, Registrations, Payments
+  - External Payment Gateway
+  - Data flow arrows (request/response)
+
+![Figure 2: Functional User Flow](assets/diagrams/figure2_user_flow.svg)
+
+- **Figure 2**: Functional user-flow diagram
+  - Nodes: Discover (Search) → Event Details (Breadcrumbs, Countdown, FAQ, Share, Similar) → Registration → Payment → Confirmation (Add to Calendar, Share)
+  - Annotations: API calls, loading states, error handling points
+
+## 1.2 Input Data Selection
+
+The portal relies on operational datasets supporting discovery, registration, payment, and engagement. We define the data scope and preprocessing to ensure consistency, performance, and high-quality UX.
+
+### 1.2.1 Core Entities and Fields
+
+- **Events**
+  - Fields: `id`, `title`, `shortDescription`, `fullDescription`, `department`, `category`, `startDateTime`, `endDateTime`, `timezone`, `location` (venue/map/link), `imageUrl`, `capacity`, `isPaid`, `price`, `status` (upcoming/ended), `organizer`, `slug`.
+  - Source: Events API.
+
+- **Users**
+  - Fields: `userId`, `name`, `email`, `role` (participant/admin), `department` (optional), `avatarUrl` (optional).
+  - Source: Auth/Profile API.
+
+- **Registrations**
+  - Fields: `registrationId`, `eventId`, `userId`, `team` (boolean/size if applicable), `registeredAt`, `status` (initiated/confirmed/cancelled), `paymentId` (if paid), `tickets`.
+  - Source: Registrations API.
+
+- **Payments / Orders**
+  - Fields: `paymentId`, `orderId`, `eventId`, `userId`, `amount`, `currency`, `status` (pending/success/failed), `provider`, `createdAt`, `updatedAt`.
+  - Source: Payments API and external gateway.
+
+- **Engagement Signals (client-side, best-effort)**
+  - Fields: `searchQuery`, `selectedFilters`, `clickThrough` (from search/similar), `shareAction`, `calendarAdd`, `errors`.
+  - Source: Client telemetry (optional, privacy-aware; aggregated for admin analytics if enabled).
+
+### 1.2.2 Derived Fields and Enrichment
+
+- `status` (Upcoming/Ended): Derived from current time vs. `startDateTime`/`endDateTime` (timezone-aware).
+- `countdownTarget`: Computed from `startDateTime` for real-time countdown.
+- `calendarLinks`: Prebuilt Google/Outlook URLs and `.ics` payload based on event metadata.
+- `sharePayload`: Channel-specific text and URLs.
+- `similarGroupKey`: `department` (or category) used for rule-based similar events.
+- `displayPrice`: Human-readable currency formatting.
+- `slug`: URL-safe identifier derived from `title`.
+
+### 1.2.3 Preprocessing and Normalization
+
+- Date/Time: Normalize to ISO 8601; handle timezone conversions on display; compute countdown deltas each second.
+- Text: Trim, sanitize display strings; generate safe HTML where needed.
+- Numbers/Currency: Format with locale-aware APIs; round as required.
+- Images: Provide responsive sizes and aspect ratio hints; fallbacks for missing images.
+- Search: Debounce input (300ms); limit client-side previews to top N (e.g., 5); forward full query to server for detailed results.
+- Similar Events: Filter by `department`, exclude current `eventId`, cap to 3 items for layout.
+- FAQ: Template-fill from event attributes (fees, dates, eligibility, venue, registration steps).
+- Caching: Short-lived cache for event lists/details; invalidate on navigation or updates.
+- Accessibility: Ensure ARIA labels for interactive elements derived from metadata.
+
+### 1.2.4 Field Dictionary (Representative)
+
+| Field | Source | Type | Example/Range | Preprocessing |
+| --- | --- | --- | --- | --- |
+| id | Events API | string | evt_123 | As-is |
+| title | Events API | string | "Hackathon 2025" | Trim; slugify |
+| department | Events API | string | CSE/ECE/ME | Normalize casing; group key |
+| category | Events API | string | Workshop/Seminar | Normalize; optional facets |
+| startDateTime | Events API | ISO datetime | 2025-11-10T09:00:00Z | ISO ensure; tz-display |
+| endDateTime | Events API | ISO datetime | 2025-11-10T17:00:00Z | ISO ensure; duration |
+| location | Events API | string/object | "Auditorium A" | Map link enrichment |
+| imageUrl | Events API | URL | https://.../img.jpg | Responsive src; fallback |
+| price | Events API | number | 0–99999 | Currency format; free badge |
+| status | Derived | enum | upcoming/ended | From dates vs now |
+| countdownTarget | Derived | datetime | startDateTime | Delta calc per second |
+| calendarLinks | Derived | objects | Google/Outlook/.ics | From core fields |
+| sharePayload | Derived | object | per-channel | Title + URL encoding |
+| similarGroupKey | Derived | string | department | Rule-based grouping |
+
+![Figure 3: ER Diagram](assets/diagrams/figure3_er_diagram.svg)
+
+- **Figure 3**: ER diagram linking Users ↔ Registrations ↔ Events ↔ Payments, with cardinalities and key fields.
+
+### 1.2.5 Data Quality and Governance
+
+- Validation: Client-side checks for mandatory fields; backend remains source of truth.
+- Privacy: Only aggregate engagement telemetry; avoid PII in client logs.
+- Consistency: Single source for event time zone; deterministic slug generation.
+- Internationalization (optional): Locale-aware date/number formatting.
+
+## 1.3 Interaction Model Design and Evaluation
+
+The portal employs lightweight, rule-based interaction models aligned with currently active features:
+
+- **Search (Discovery & Navigation)**: Debounced input (≈300ms), server-backed lookup, client preview limited to top 5 results with thumbnails and a “view all” option.
+- **Similar Events**: Rule-based by `department`, excluding current event; limited to 3 cards with images and metadata.
+- **FAQ Generation**: Template-driven from event attributes (fees, dates, eligibility, location); accordion UI for readability.
+- **Countdown Timer**: Real-time delta updates to event start; graceful expiry message (“Event has started!”).
+- **Add to Calendar**: Prebuilt links and `.ics` for Google/Outlook/Apple; includes title, time, location.
+- **Social Sharing**: Channel-specific share links and copy-to-clipboard fallback with toasts.
+- **Payment UX**: Two-column layout (form + sticky summary), trust indicators, responsive design; backend processes payments.
+
+### Evaluation Setup
+
+- **Functional**: Happy/edge-path tests for search, details (breadcrumbs, FAQ, countdown, sharing, calendar), registration, and payment.
+- **Responsive**: Mobile (<768px), tablet (768–1024px), desktop (>1024px) verification.
+- **Browser Compatibility**: Chrome/Edge, Firefox, Safari, and major mobile browsers.
+- **Performance Targets**: Page load < 3s, search response < 500ms, smooth animations (~60fps), no memory leaks; debounced API calls.
+- **Accessibility**: ARIA labels, keyboard navigation, focus states, color contrast.
+- **Backward Compatibility**: No changes to existing APIs/DB; all legacy flows (auth, registration, payments, admin) preserved.
+
+![Figure 4: Performance Trends](assets/diagrams/figure4_performance_trends.svg)
+
+- **Figure 4**: Performance trend lines (page load, search latency) across test runs with target thresholds.
+
+![Figure 5: Latency vs Throughput](assets/diagrams/figure5_latency_scatter.svg)
+
+- **Figure 5**: Scatter plot of requests/sec vs. 95th percentile latency for key endpoints under moderate load.
+
+![Figure 6: Spike Test Overlay](assets/diagrams/figure6_spike_overlay.svg)
+
+- **Figure 6**: Time-series overlay of active users vs. response time during a simulated event launch spike.
+
+![Figure 7: Error Rate Over Time](assets/diagrams/figure7_error_rate.svg)
+
+- **Figure 7**: Error rate over time with annotations for mitigations (retries/fallbacks).
+
+![Figure 8: Client Render Duration Histogram](assets/diagrams/figure8_tti_histogram.svg)
+
+- **Figure 8**: Histogram of client render durations or TTI across device classes.

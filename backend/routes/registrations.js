@@ -4,6 +4,7 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const Registration = require('../models/Registration');
 const Event = require('../models/Event');
 const sendEmail = require('../utils/sendEmail');
+const generateCertificate = require('../utils/generateCertificate');
 const { auth } = require('../middleware/auth');
 const mongoose = require('mongoose');
 // Minimum amount Stripe will accept (~$0.50). Use ₹50 as a safe floor.
@@ -14,8 +15,8 @@ async function sendReceiptForRegistration(registration, explicitEmail) {
   try {
     if (!registration) return;
     if (registration.paymentStatus !== 'completed') return;
-    try { await registration.populate('eventId'); } catch {}
-    try { await registration.populate('userId', 'email name'); } catch {}
+    try { await registration.populate('eventId'); } catch { }
+    try { await registration.populate('userId', 'email name'); } catch { }
 
     const ev = registration.eventId || {};
     const ownerEmail = (explicitEmail || registration.userId?.email || '').toLowerCase();
@@ -26,7 +27,7 @@ async function sendReceiptForRegistration(registration, explicitEmail) {
     if (recipients.length === 0) return;
 
     const scheduleHtml = Array.isArray(ev.schedule) && ev.schedule.length > 0
-      ? `<ul>${ev.schedule.map((s)=>`<li>${s.date ? new Date(s.date).toLocaleDateString() : ''} ${s.time ? '• ' + s.time : ''}</li>`).join('')}</ul>`
+      ? `<ul>${ev.schedule.map((s) => `<li>${s.date ? new Date(s.date).toLocaleDateString() : ''} ${s.time ? '• ' + s.time : ''}</li>`).join('')}</ul>`
       : '';
     const roundsHtml = ev.hasMultipleRounds ? `<p><strong>Rounds:</strong> ${ev.numberOfRounds}</p>` : '';
     const memberNames = Array.isArray(registration.teamMembers)
@@ -34,7 +35,7 @@ async function sendReceiptForRegistration(registration, explicitEmail) {
       : [];
     const teamHtml = `
       ${registration.teamName ? `<p><strong>Team:</strong> ${registration.teamName}</p>` : ''}
-      ${memberNames.length ? `<p><strong>Team Members:</strong></p><ul>${memberNames.map((n)=>`<li>${n}</li>`).join('')}</ul>` : ''}
+      ${memberNames.length ? `<p><strong>Team Members:</strong></p><ul>${memberNames.map((n) => `<li>${n}</li>`).join('')}</ul>` : ''}
     `;
 
     const html = `
@@ -66,12 +67,111 @@ async function sendReceiptForRegistration(registration, explicitEmail) {
   }
 }
 
+// Helper: send certificate emails (owner + team members) only after event completion
+async function sendCertificatesForRegistration(registration) {
+  try {
+    if (!registration) return;
+    if (registration.paymentStatus !== 'completed') return;
+    if (registration.certificateSent) return;
+    await registration.populate('eventId');
+    await registration.populate('userId', 'email name');
+    const ev = registration.eventId || {};
+    const now = Date.now();
+    const eventDateObj = ev?.date ? new Date(ev.date) : null;
+    const eventPast = eventDateObj && !Number.isNaN(eventDateObj.getTime()) ? (eventDateObj.getTime() < now) : false;
+    if (!eventPast) return; // only after event completion
+
+    const ownerEmail = (registration.userId?.email || '').toLowerCase();
+    const memberEmails = Array.isArray(registration.teamMembers)
+      ? registration.teamMembers.map(m => (m && m.email ? String(m.email).trim().toLowerCase() : '')).filter(Boolean)
+      : [];
+    const recipients = Array.from(new Set([ownerEmail, ...memberEmails].filter(Boolean)));
+    if (recipients.length === 0) return;
+
+    const memberNameByEmail = new Map();
+    if (Array.isArray(registration.teamMembers)) {
+      for (const m of registration.teamMembers) {
+        const e = (m && m.email ? String(m.email).trim().toLowerCase() : '');
+        if (e) memberNameByEmail.set(e, (m && m.name ? String(m.name).trim() : ''));
+      }
+    }
+
+    const eventDateStr = eventDateObj ? eventDateObj.toLocaleDateString() : '';
+    for (const email of recipients) {
+      try {
+        const recipientName = (email === ownerEmail)
+          ? (registration.userId?.name || (ownerEmail.split('@')[0] || 'Participant'))
+          : (memberNameByEmail.get(email) || email.split('@')[0] || 'Participant');
+
+        // Build data exactly like MyEvents -> CertificateView
+        const certData = {
+          participantName: recipientName,
+          teamName: registration.teamName || '',
+          eventName: ev.name || 'Event',
+          dateText: eventDateStr,
+          organizerText: ev.certificateOrganizer || '',
+          awardText: ev.certificateAwardText || 'Certificate of Participation',
+          eventTimings: ev.timings || null,
+          certificateId: `CERT-${String(registration._id || '').slice(-6).toUpperCase() || 'XXXXXX'}`,
+          leftSigner: ev.certificateOrganizer || 'Organizer',
+          rightSigner: 'Registrar',
+        };
+
+        let certificateBuffer = null;
+        try {
+          certificateBuffer = await generateCertificate({
+            recipientName,
+            eventName: ev.name || 'Event',
+            eventDate: eventDateStr,
+            location: ev.location || '',
+            registrationId: String(registration._id || '')
+          });
+        } catch (genErr) {
+          console.error('Certificate generation failed (pdfkit):', genErr?.message || genErr);
+        }
+
+        const attachments = certificateBuffer ? [{
+          filename: `Certificate - ${ev.name || 'Event'} - ${recipientName}.pdf`,
+          content: certificateBuffer,
+          contentType: 'application/pdf'
+        }] : undefined;
+
+        // Send with a dedicated subject/body for certificate delivery, including feedback CTA
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color:#111827;">Your Certificate for ${ev.name || 'Event'}</h2>
+            <p>Thanks for participating! Your certificate is attached as a PDF.</p>
+            <p><strong>Event:</strong> ${ev.name || ''}</p>
+            ${ev.date ? `<p><strong>Date:</strong> ${new Date(ev.date).toLocaleDateString()}</p>` : ''}
+            ${ev.location ? `<p><strong>Location:</strong> ${ev.location}</p>` : ''}
+            <p style="margin-top:16px;"><a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/my-events" style="background:#14b8a6;color:#fff;padding:10px 14px;border-radius:8px;text-decoration:none;display:inline-block">Give Feedback</a></p>
+            <p style="margin-top:12px;color:#6B7280;">If you can’t open the attachment, reply to this email for help.</p>
+          </div>
+        `;
+
+        await sendEmail({ email, subject: `Your Certificate - ${ev.name || 'Event'}`, html, attachments });
+      } catch (e) {
+        console.error('sendCertificatesForRegistration to member failed:', email, e?.message || e);
+      }
+    }
+
+    // Mark as sent without triggering full document validation (handles legacy docs)
+    try {
+      await Registration.updateOne({ _id: registration._id }, { $set: { certificateSent: true } });
+    } catch (e) {
+      console.error('Failed to mark certificateSent:', e?.message || e);
+    }
+  } catch (e) {
+    console.error('sendCertificatesForRegistration error:', e);
+  }
+}
+
 // Helper: send a failure/timeout email once (owner + team members)
 async function sendFailureEmail(registration, explicitEmail, reason = 'Payment failed or timed out') {
   try {
     if (!registration) return;
-    try { await registration.populate('eventId'); } catch {}
-    try { await registration.populate('userId', 'email name'); } catch {}
+    try { await registration.populate('eventId'); } catch { }
+    try { await registration.populate('userId', 'email name'); } catch { }
     const ev = registration.eventId || {};
 
     const ownerEmail = (explicitEmail || registration.userId?.email || '').toLowerCase();
@@ -83,11 +183,11 @@ async function sendFailureEmail(registration, explicitEmail, reason = 'Payment f
     if (registration.failureEmailSent) return; // avoid duplicates
 
     const memberNames = Array.isArray(registration.teamMembers)
-      ? registration.teamMembers.map((m)=> (m && m.name ? String(m.name).trim() : '')).filter(Boolean)
+      ? registration.teamMembers.map((m) => (m && m.name ? String(m.name).trim() : '')).filter(Boolean)
       : [];
     const teamHtml = `
       ${registration.teamName ? `<p><strong>Team:</strong> ${registration.teamName}</p>` : ''}
-      ${memberNames.length ? `<p><strong>Team Members:</strong></p><ul>${memberNames.map((n)=>`<li>${n}</li>`).join('')}</ul>` : ''}
+      ${memberNames.length ? `<p><strong>Team Members:</strong></p><ul>${memberNames.map((n) => `<li>${n}</li>`).join('')}</ul>` : ''}
     `;
 
     const html = `
@@ -121,7 +221,7 @@ router.get('/my-events', auth, async (req, res) => {
   try {
     // Include: registrations owned by user OR where user's email is in teamMembers.email
     // Additionally: if team member emails were not captured, match by email local-part vs teamMembers.name
-    const orClauses = [ { userId: req.user._id } ];
+    const orClauses = [{ userId: req.user._id }];
     if (req.user?.email) {
       const emailLower = String(req.user.email).toLowerCase();
       const local = emailLower.split('@')[0] || '';
@@ -172,6 +272,12 @@ router.get('/my-events', auth, async (req, res) => {
             }
             await sendReceiptForRegistration(r, r.userId?.email);
           }
+          // New fallback: if event completed and certificate not sent, send certificate now
+          try {
+            await sendCertificatesForRegistration(r);
+          } catch (e) {
+            console.error('Fallback send certificate error:', e);
+          }
         }
       } catch (e) {
         console.error('Fallback send receipts error:', e);
@@ -184,8 +290,6 @@ router.get('/my-events', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
-
-// @route GET /api/registrations/stats
 // @desc Registration statistics (admin only)
 // @access Private (Admin)
 router.get('/stats', auth, async (req, res) => {
@@ -204,7 +308,7 @@ router.get('/stats', auth, async (req, res) => {
       if (end) match.registeredAt.$lte = new Date(end);
     }
 
-    const pipelineBase = [ { $match: match } ];
+    const pipelineBase = [{ $match: match }];
 
     const groupByField = (field) => ([
       ...pipelineBase,
@@ -291,19 +395,19 @@ router.get('/event/:eventId', auth, async (req, res) => {
     const enriched = registrations.map((r) => {
       const teamResolved = Array.isArray(r.teamMembers)
         ? r.teamMembers.map((m) => {
-            const e = (m?.email || '').toLowerCase();
-            let info = e ? metaEmail.get(e) : null;
-            if (!info) {
-              const key = (m?.name || '').trim().toLowerCase();
-              if (key) info = metaLocal.get(key);
-            }
-            return {
-              name: m?.name || '',
-              email: m?.email || '',
-              gender: info?.gender || 'unknown',
-              year: info?.year || 'unknown',
-            };
-          })
+          const e = (m?.email || '').toLowerCase();
+          let info = e ? metaEmail.get(e) : null;
+          if (!info) {
+            const key = (m?.name || '').trim().toLowerCase();
+            if (key) info = metaLocal.get(key);
+          }
+          return {
+            name: m?.name || '',
+            email: m?.email || '',
+            gender: info?.gender || 'unknown',
+            year: info?.year || 'unknown',
+          };
+        })
         : [];
       // Attach as a plain object to avoid mutating mongoose doc directly
       const obj = r.toObject({ virtuals: true });
@@ -371,7 +475,7 @@ router.get('/event/:eventId/export', auth, async (req, res) => {
 
     // Build Excel data
     const rows = [];
-    
+
     for (const r of registrations) {
       const baseData = {
         'Registration ID': r._id.toString(),
@@ -393,7 +497,7 @@ router.get('/event/:eventId/export', auth, async (req, res) => {
             const key = (m?.name || '').trim().toLowerCase();
             if (key) info = metaLocal.get(key);
           }
-          
+
           rows.push({
             ...baseData,
             'Participant Name': m?.name || 'N/A',
@@ -419,7 +523,7 @@ router.get('/event/:eventId/export', auth, async (req, res) => {
     // Create workbook and worksheet
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(rows);
-    
+
     // Set column widths
     ws['!cols'] = [
       { wch: 25 }, // Registration ID
@@ -494,9 +598,9 @@ router.post('/register', auth, async (req, res) => {
           userId: req.user._id,
           paymentStatus: 'completed'
         });
-        
+
         if (!basicRegistration) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             message: `You must complete basic registration for "${parentEvent.name}" before registering for its sub-events`,
             requiresBasicRegistration: true,
             mainEventId: event.parentEvent,
@@ -514,11 +618,11 @@ router.post('/register', auth, async (req, res) => {
 
     // Normalize incoming team members EXACTLY as provided on the form (full list including leader)
     let incomingMembers = Array.isArray(teamMembers)
-      ? teamMembers.map((m)=> ({
-          name: String(m?.name || '').trim(),
-          email: m?.email ? String(m.email).trim().toLowerCase() : null,
-          phone: m?.phone ? String(m.phone).trim() : null,
-        })).filter((m)=> m.name)
+      ? teamMembers.map((m) => ({
+        name: String(m?.name || '').trim(),
+        email: m?.email ? String(m.email).trim().toLowerCase() : null,
+        phone: m?.phone ? String(m.phone).trim() : null,
+      })).filter((m) => m.name)
       : [];
     // Compute team size from provided names when team participation is allowed
     let computedTeamSize = teamsAllowed ? (incomingMembers.length || 1) : 1;
@@ -616,7 +720,7 @@ router.post('/register', auth, async (req, res) => {
           registrationId: registration._id.toString()
         }
       });
-      
+
       registration.stripe_session_id = session.id;
     } else {
       // Treat fees below threshold as free to avoid Stripe amount_too_small
@@ -681,7 +785,7 @@ router.post('/:id/verify-checkout', auth, async (req, res) => {
     const registration = await Registration.findById(req.params.id)
       .populate('eventId')
       .populate('userId', 'email name');
-    
+
     if (!registration) {
       return res.status(404).json({ message: 'Registration not found' });
     }
@@ -694,7 +798,7 @@ router.post('/:id/verify-checkout', auth, async (req, res) => {
 
     // Retrieve session from Stripe
     const session = await stripe.checkout.sessions.retrieve(sessionId);
-    
+
     if (session.payment_status === 'paid') {
       registration.paymentStatus = 'completed';
       registration.stripe_payment_id = session.payment_intent;
@@ -703,14 +807,14 @@ router.post('/:id/verify-checkout', auth, async (req, res) => {
       // Send confirmation email
       await sendReceiptForRegistration(registration, registration.userId?.email);
 
-      res.json({ 
+      res.json({
         message: 'Payment verified successfully',
-        registration 
+        registration
       });
     } else {
-      res.status(400).json({ 
+      res.status(400).json({
         message: 'Payment not completed',
-        status: session.payment_status 
+        status: session.payment_status
       });
     }
   } catch (error) {
@@ -728,7 +832,7 @@ router.post('/:id/confirm-payment', auth, async (req, res) => {
     const registration = await Registration.findById(req.params.id)
       .populate('eventId')
       .populate('userId', 'email name');
-    
+
     if (!registration) {
       return res.status(404).json({ message: 'Registration not found' });
     }
@@ -741,7 +845,7 @@ router.post('/:id/confirm-payment', auth, async (req, res) => {
 
     // Verify payment with Stripe
     const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-    
+
     if (paymentIntent.status === 'succeeded') {
       registration.paymentStatus = 'completed';
       registration.stripe_payment_id = paymentIntentId;
@@ -750,14 +854,14 @@ router.post('/:id/confirm-payment', auth, async (req, res) => {
       // Send confirmation email
       await sendReceiptForRegistration(registration, registration.userId?.email);
 
-      res.json({ 
+      res.json({
         message: 'Payment confirmed successfully',
-        registration 
+        registration
       });
     } else {
-      res.status(400).json({ 
+      res.status(400).json({
         message: 'Payment not successful',
-        status: paymentIntent.status 
+        status: paymentIntent.status
       });
     }
   } catch (error) {
@@ -827,7 +931,7 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
     }
 
     const { winnerStatus } = req.body; // 'none', 'winner', or 'runner'
-    
+
     if (!['none', 'winner', 'runner'].includes(winnerStatus)) {
       return res.status(400).json({ message: 'Invalid winner status' });
     }
@@ -835,7 +939,7 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
     const registration = await Registration.findById(req.params.id)
       .populate('eventId')
       .populate('userId');
-    
+
     if (!registration) {
       return res.status(404).json({ message: 'Registration not found' });
     }
@@ -850,14 +954,14 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
 
     // Calculate prize money change
     let prizeChange = 0;
-    
+
     // Remove old prize if any
     if (oldStatus === 'winner' && event.winnerPrize) {
       prizeChange -= event.winnerPrize;
     } else if (oldStatus === 'runner' && event.runnerPrize) {
       prizeChange -= event.runnerPrize;
     }
-    
+
     // Add new prize if any
     if (winnerStatus === 'winner' && event.winnerPrize) {
       prizeChange += event.winnerPrize;
@@ -867,12 +971,12 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
 
     // Update registration
     registration.winnerStatus = winnerStatus;
-    
+
     // Ensure registrationType exists for old documents (backward compatibility)
     if (!registration.registrationType) {
       registration.registrationType = 'internal'; // Default to internal for old records
     }
-    
+
     await registration.save();
 
     // Update team leader's (userId) total amount won
@@ -891,14 +995,14 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
         .map(m => m.email)
         .filter(Boolean)
         .map(e => e.toLowerCase());
-      
+
       if (memberEmails.length > 0) {
         // Find all users with these emails and update their records if needed
         // This is optional - you can track team member wins separately if needed
       }
     }
 
-    res.json({ 
+    res.json({
       message: 'Winner status updated successfully',
       registration,
       prizeChange
@@ -915,7 +1019,7 @@ router.post('/:id/set-winner-status', auth, async (req, res) => {
 router.delete('/:id', auth, async (req, res) => {
   try {
     const registration = await Registration.findById(req.params.id);
-    
+
     if (!registration) {
       return res.status(404).json({ message: 'Registration not found' });
     }
@@ -964,5 +1068,41 @@ router.post('/:id/send-receipt', auth, async (req, res) => {
   }
 });
 
+// @route POST /api/registrations/dispatch-certificates
+// @desc Admin trigger to send certificates for completed events (optionally filter by eventId)
+// @access Private (Admin)
+router.post('/dispatch-certificates', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    const { eventId } = req.body || {};
+    const match = { paymentStatus: 'completed', certificateSent: { $ne: true } };
+    if (eventId) match.eventId = new mongoose.Types.ObjectId(eventId);
+
+    const regs = await Registration.find(match).populate('eventId').populate('userId', 'email name');
+    let processed = 0;
+    const now = Date.now();
+    for (const r of regs) {
+      const ev = r.eventId;
+      if (!ev || !ev.date) continue;
+      const dt = new Date(ev.date);
+      if (Number.isNaN(dt.getTime())) continue;
+      if (dt.getTime() >= now) continue; // only after event completion
+      try {
+        await sendCertificatesForRegistration(r);
+        processed++;
+      } catch (e) {
+        console.error('dispatch-certificates error:', e);
+      }
+    }
+    res.json({ message: 'Dispatch complete', processed });
+  } catch (err) {
+    console.error('dispatch-certificates fatal:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
 module.exports.webhookHandler = webhookHandler;
+module.exports.sendCertificatesForRegistration = sendCertificatesForRegistration;

@@ -87,11 +87,20 @@ const registrationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   }, // Whether a failure/timeout email has been sent
+  certificateSent: {
+    type: Boolean,
+    default: false
+  }, // Whether the certificate email has been sent (after event completion)
   winnerStatus: {
     type: String,
     enum: ['none', 'winner', 'runner'],
     default: 'none'
   }, // Winner status for the team/individual
+  certificateType: {
+    type: String,
+    enum: ['participation', 'achievement'],
+    default: 'participation'
+  }, // Type of certificate to generate
 });
 
 module.exports = mongoose.model('Registration', registrationSchema);
