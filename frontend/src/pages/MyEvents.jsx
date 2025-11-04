@@ -31,7 +31,7 @@ const MyEvents = () => {
       setLoading(true);
       setError('');
       try {
-        const { data } = await api.get('/api/registrations/my-events');
+        const { data } = await api.get('/registrations/my-events');
         setItems(Array.isArray(data) ? data : []);
       } catch (e) {
         setError('Failed to load your events.');
@@ -46,7 +46,7 @@ const MyEvents = () => {
   useEffect(() => {
     const loadMyFeedback = async () => {
       try {
-        const { data } = await api.get('/api/feedback/my-feedback');
+        const { data } = await api.get('/feedback/my-feedback');
         const ids = new Set(
           (Array.isArray(data) ? data : [])
             .filter((fb) => fb?.eventId?._id)
@@ -71,7 +71,7 @@ const MyEvents = () => {
     // Download certificate
   const handleDownloadCertificate = async (event, registration) => {
     try {
-      const response = await api.get(`/api/events/${event._id}/certificate`, {
+      const response = await api.get(`/events/${event._id}/certificate`, {
         responseType: 'blob',
         params: { registrationId: registration._id }
       });
@@ -204,7 +204,7 @@ const MyEvents = () => {
     setSubmitting(true);
     setError('');
     try {
-      await api.post('/api/feedback', {
+      await api.post('/feedback', {
         eventId: activeEvent.eventId._id,
         rating,
         review,

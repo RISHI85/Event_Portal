@@ -23,7 +23,7 @@ const PaymentSuccess = () => {
         }
 
         // Verify payment with backend
-        await api.post(`/api/registrations/${registrationId}/verify-checkout`, {
+        await api.post(`/registrations/${registrationId}/verify-checkout`, {
           sessionId
         });
 

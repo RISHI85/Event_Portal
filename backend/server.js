@@ -11,7 +11,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: ['https://event-portal-chi.vercel.app'],
+  origin: ['https://event-portal-chi.vercel.app', 'http://localhost:5000'],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true
 }));

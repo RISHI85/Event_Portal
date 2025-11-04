@@ -166,7 +166,7 @@ const Explore = () => {
     if (isAuthenticated && user?.role === 'admin') return;
     const loadMyRegs = async () => {
       try {
-        const { data } = await api.get('/api/registrations/my-events');
+        const { data } = await api.get('/registrations/my-events');
         const ids = new Set(
           (Array.isArray(data) ? data : [])
             .filter((r) => r?.eventId?._id)
@@ -221,7 +221,7 @@ const Explore = () => {
     if (!isOpen && !detailsMap[id]) {
       setDetailsMap((m) => ({ ...m, [id]: { loading: true, data: null } }));
       try {
-        const { data } = await api.get(`/api/events/${id}`);
+        const { data } = await api.get(`/events/${id}`);
         setDetailsMap((m) => ({ ...m, [id]: { loading: false, data } }));
       } catch (e) {
         setDetailsMap((m) => ({ ...m, [id]: { loading: false, data: null } }));

@@ -33,7 +33,7 @@ const Register = () => {
     }
     const load = async () => {
       try {
-        const { data } = await api.get(`/api/events/${id}`);
+        const { data } = await api.get(`/events/${id}`);
         setEvent(data);
         // Initialize team size constraints from registrationDetails
         const rd = data?.registrationDetails || {};
@@ -171,7 +171,7 @@ const Register = () => {
         // Send EXACT details for members (including registering user as first entry)
         teamMembers: normalizedMembers,
       };
-      const { data } = await api.post('/api/registrations/register', payload);
+      const { data } = await api.post('/registrations/register', payload);
       
       // Store return URL in localStorage if provided
       if (returnTo) {

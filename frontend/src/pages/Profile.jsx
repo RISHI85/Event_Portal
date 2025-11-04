@@ -46,7 +46,7 @@ const Profile = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const { data } = await api.get('/api/auth/me');
+        const { data } = await api.get('/auth/me');
         setUser(data);
         setForm((f) => ({
           ...f,
@@ -63,7 +63,7 @@ const Profile = () => {
         
         // Fetch stats
         try {
-          const { data: regs } = await api.get('/api/registrations/my-events');
+          const { data: regs } = await api.get('/registrations/my-events');
           console.log('Registrations data:', regs); // Debug log
           
           const registrations = Array.isArray(regs) ? regs : [];
@@ -151,7 +151,7 @@ const Profile = () => {
           className="btn-edit-new" 
           onClick={async () => {
             try {
-              const { data } = await api.get('/api/auth/me');
+              const { data } = await api.get('/auth/me');
               setUser(data);
               setForm({
                 name: data.name || '',
@@ -391,7 +391,7 @@ const Profile = () => {
             <form className="edit-form" onSubmit={async (e)=>{
               e.preventDefault();
               try {
-                const { data } = await api.put('/api/auth/me', {
+                const { data } = await api.put('/auth/me', {
                   name: form.name,
                   email: form.email,
                   phone: form.phone,

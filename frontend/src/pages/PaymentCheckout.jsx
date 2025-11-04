@@ -15,7 +15,7 @@ const PaymentCheckout = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const { data } = await api.get(`/api/registrations/${registrationId}`);
+        const { data } = await api.get(`/registrations/${registrationId}`);
         setRegistration(data.registration);
       } catch (e) {
         setError(e.response?.data?.message || e.message || 'Failed to load payment');
@@ -31,7 +31,7 @@ const PaymentCheckout = () => {
       setProcessing(true);
       
       // Get checkout URL
-      const { data } = await api.post('/api/registrations/register', {
+      const { data } = await api.post('/registrations/register', {
         eventId: registration.eventId._id,
         department: registration.department,
         year: registration.year,

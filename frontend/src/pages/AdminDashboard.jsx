@@ -34,7 +34,7 @@ const AdminDashboard = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/api/events?isMainEvent=true');
+      const { data } = await api.get('/events?isMainEvent=true');
       setEvents(data);
     } catch (e) {
       toast.error('Failed to load events');
@@ -102,7 +102,7 @@ const AdminDashboard = () => {
 
   const loadStats = async (eventId) => {
     try {
-      const { data } = await api.get('/api/registrations/stats', { params: { eventId } });
+      const { data } = await api.get('/registrations/stats', { params: { eventId } });
       setStats(data);
     } catch (e) {
       toast.error('Failed to load stats');
