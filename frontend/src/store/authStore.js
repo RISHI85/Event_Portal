@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import axios from 'axios';
+import api from '../api/api'; // ✅ use your configured axios instance
 import toast from 'react-hot-toast';
 
 const useAuthStore = create((set, get) => ({
@@ -20,10 +20,11 @@ const useAuthStore = create((set, get) => ({
     set({ user: null, token: null, isAuthenticated: false });
   },
 
+  // ✅ use api.post() for backend routes
   register: async (payload) => {
     set({ loading: true });
     try {
-      const { data } = await axios.post('/api/auth/register', payload);
+      const { data } = await api.post('/auth/register', payload);
       toast.success('Registered. Check email for OTP.');
       return data;
     } catch (err) {
@@ -37,7 +38,7 @@ const useAuthStore = create((set, get) => ({
   login: async ({ email, password }) => {
     set({ loading: true });
     try {
-      const { data } = await axios.post('/api/auth/login', { email, password });
+      const { data } = await api.post('/auth/login', { email, password });
       toast.success('OTP sent to email');
       return data;
     } catch (err) {
@@ -51,7 +52,7 @@ const useAuthStore = create((set, get) => ({
   verifyOtp: async ({ email, otp }) => {
     set({ loading: true });
     try {
-      const { data } = await axios.post('/api/auth/verify-otp', { email, otp });
+      const { data } = await api.post('/auth/verify-otp', { email, otp });
       set({ user: data.user });
       get().setToken(data.token);
       toast.success('Logged in successfully');
