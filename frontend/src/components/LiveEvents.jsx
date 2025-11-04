@@ -45,7 +45,7 @@ const LiveEvents = () => {
       params.set('timeframe', timeframe);
     }
     setLoading(true);
-    fetchWithLoading(`/api/events?${params.toString()}`)
+    fetchWithLoading(`${process.env.REACT_APP_API_URL}/api/events?${params.toString()}`)
       .then((r) => r.json())
       .then((data) => setEvents(Array.isArray(data) ? data : []))
       .catch(() => setEvents([]))
@@ -58,7 +58,7 @@ const LiveEvents = () => {
     let mounted = true;
     const headers = { 'accept': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    fetchWithLoading('/api/registrations/my-events', { headers })
+    fetchWithLoading(`${process.env.REACT_APP_API_URL}/api/registrations/my-events`, { headers })
       .then((r) => r.ok ? r.json() : [])
       .then((regs) => {
         if (!mounted) return;
@@ -93,8 +93,8 @@ const LiveEvents = () => {
         <div className="filters" style={{ position: 'relative' }} ref={popRef}>
           <button className="filter-btn" onClick={() => setFiltersOpen((v) => !v)} aria-haspopup="true" aria-expanded={filtersOpen} title="Filters">
             {/* Funnel icon (inline SVG) */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginRight:6}}>
-              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" stroke="currentColor" strokeWidth="1.5" fill="none"/>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 6 }}>
+              <path d="M3 5h18l-7 8v5l-4 2v-7L3 5z" stroke="currentColor" strokeWidth="1.5" fill="none" />
             </svg>
             Filter
           </button>
@@ -102,20 +102,20 @@ const LiveEvents = () => {
             <div className="filter-popover">
               <div className="filter-group">
                 <div className="filter-title">Status</div>
-                <label><input type="radio" name="status" value="upcoming" checked={status==='upcoming'} onChange={(e)=>setStatus(e.target.value)} /> Upcoming</label>
-                <label><input type="radio" name="status" value="live" checked={status==='live'} onChange={(e)=>setStatus(e.target.value)} /> Live</label>
-                <label><input type="radio" name="status" value="ended" checked={status==='ended'} onChange={(e)=>setStatus(e.target.value)} /> Ended</label>
+                <label><input type="radio" name="status" value="upcoming" checked={status === 'upcoming'} onChange={(e) => setStatus(e.target.value)} /> Upcoming</label>
+                <label><input type="radio" name="status" value="live" checked={status === 'live'} onChange={(e) => setStatus(e.target.value)} /> Live</label>
+                <label><input type="radio" name="status" value="ended" checked={status === 'ended'} onChange={(e) => setStatus(e.target.value)} /> Ended</label>
               </div>
               {status !== 'live' && (
                 <div className="filter-group">
                   <div className="filter-title">Timeframe</div>
-                  <label><input type="radio" name="timeframe" value="all" checked={timeframe==='all'} onChange={(e)=>setTimeframe(e.target.value)} /> All</label>
-                  <label><input type="radio" name="timeframe" value="today" checked={timeframe==='today'} onChange={(e)=>setTimeframe(e.target.value)} /> Today</label>
-                  <label><input type="radio" name="timeframe" value="this_week" checked={timeframe==='this_week'} onChange={(e)=>setTimeframe(e.target.value)} /> This Week</label>
-                  <label><input type="radio" name="timeframe" value="this_month" checked={timeframe==='this_month'} onChange={(e)=>setTimeframe(e.target.value)} /> This Month</label>
+                  <label><input type="radio" name="timeframe" value="all" checked={timeframe === 'all'} onChange={(e) => setTimeframe(e.target.value)} /> All</label>
+                  <label><input type="radio" name="timeframe" value="today" checked={timeframe === 'today'} onChange={(e) => setTimeframe(e.target.value)} /> Today</label>
+                  <label><input type="radio" name="timeframe" value="this_week" checked={timeframe === 'this_week'} onChange={(e) => setTimeframe(e.target.value)} /> This Week</label>
+                  <label><input type="radio" name="timeframe" value="this_month" checked={timeframe === 'this_month'} onChange={(e) => setTimeframe(e.target.value)} /> This Month</label>
                 </div>
               )}
-              <div style={{display:'flex', justifyContent:'flex-end', gap:8, marginTop:8}}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>
                 <button className="btn-secondary" onClick={() => setFiltersOpen(false)}>Done</button>
               </div>
             </div>
@@ -131,17 +131,17 @@ const LiveEvents = () => {
           const evStatus = getEventStatus(ev);
           const dateText = formatDate(ev);
           const isRegistered = registeredIds.has(String(ev._id));
-          
+
           // Check eligibility based on department (case-insensitive)
           const eligibleDepts = ev.eligibleDepartments || [];
           const userDept = user?.department;
-          const isEligible = eligibleDepts.length === 0 || (userDept && eligibleDepts.some(dept => 
+          const isEligible = eligibleDepts.length === 0 || (userDept && eligibleDepts.some(dept =>
             dept.trim().toLowerCase() === userDept.trim().toLowerCase()
           ));
-          
+
           return (
-            <div 
-              className="event-card-clean" 
+            <div
+              className="event-card-clean"
               key={ev._id}
             >
               <div className="event-card-header">
@@ -158,51 +158,51 @@ const LiveEvents = () => {
                   )}
                 </div>
               </div>
-              
+
               <div className="event-card-content">
                 <h3 className="event-card-title">{ev.name}</h3>
-                
+
                 <div className="event-details-list">
                   <div className="detail-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="#14b8a6" strokeWidth="1.5"/>
-                      <path d="M8 3v4M16 3v4M3 10h18" stroke="#14b8a6" strokeWidth="1.5"/>
+                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="#14b8a6" strokeWidth="1.5" />
+                      <path d="M8 3v4M16 3v4M3 10h18" stroke="#14b8a6" strokeWidth="1.5" />
                     </svg>
                     <span>{dateText}</span>
                   </div>
-                  
+
                   <div className="detail-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <circle cx="12" cy="12" r="9" stroke="#14b8a6" strokeWidth="1.5"/>
-                      <path d="M12 6v6l4 2" stroke="#14b8a6" strokeWidth="1.5" strokeLinecap="round"/>
+                      <circle cx="12" cy="12" r="9" stroke="#14b8a6" strokeWidth="1.5" />
+                      <path d="M12 6v6l4 2" stroke="#14b8a6" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
                     <span>{ev.time || 'TBA'}</span>
                   </div>
-                  
+
                   <div className="detail-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="#14b8a6" strokeWidth="1.5" fill="none"/>
-                      <circle cx="12" cy="10" r="2.5" stroke="#14b8a6" strokeWidth="1.5"/>
+                      <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="#14b8a6" strokeWidth="1.5" fill="none" />
+                      <circle cx="12" cy="10" r="2.5" stroke="#14b8a6" strokeWidth="1.5" />
                     </svg>
                     <span>{ev.location || 'TBA'}</span>
                   </div>
-                  
+
                   <div className="detail-item">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#14b8a6" strokeWidth="1.5" strokeLinecap="round"/>
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#14b8a6" strokeWidth="1.5" strokeLinecap="round" />
                     </svg>
                     <span>{ev.registrationCount || 0} registered</span>
                   </div>
                 </div>
-                
+
                 {!isEligible && eligibleDepts.length > 0 && (
                   <div className="eligible-info">
                     Eligible: {eligibleDepts.join(', ')}
                   </div>
                 )}
-                
-                <a 
-                  className="btn-view-details" 
+
+                <a
+                  className="btn-view-details"
                   href={`/events/${ev._id}`}
                 >
                   View Details

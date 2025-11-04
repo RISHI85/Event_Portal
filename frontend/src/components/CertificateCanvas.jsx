@@ -11,7 +11,7 @@ import React, { useEffect, useRef, useState } from 'react';
 const CertificateCanvas = ({
   width = 1600,
   height = 1131,
-  backgroundUrl = '/images/certificate.jpg',
+  backgroundUrl = `${process.env.REACT_APP_API_URL}/images/certificate.jpg`,
   participantName = 'Participant Name',
   eventName = 'Event Name',
   dateText = '',
@@ -125,10 +125,10 @@ const CertificateCanvas = ({
     <div>
       <div style={{ position: 'relative', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
         {loading && (
-          <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'#fff8', zIndex:1 }}>Rendering…</div>
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff8', zIndex: 1 }}>Rendering…</div>
         )}
-        {err && <div className="muted" style={{ padding: 8, color:'#ef4444' }}>{err}</div>}
-        <canvas ref={canvasRef} style={{ display:'block', width: '100%', height: 'auto' }} />
+        {err && <div className="muted" style={{ padding: 8, color: '#ef4444' }}>{err}</div>}
+        <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: 'auto' }} />
       </div>
       <div className="form-actions" style={{ marginTop: 8 }}>
         <button className="btn-primary" type="button" onClick={onDownload}>Download Certificate</button>

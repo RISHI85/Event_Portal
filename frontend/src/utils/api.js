@@ -1,7 +1,14 @@
 import axios from 'axios';
 import useAuthStore from '../store/authStore';
 
-const api = axios.create({});
+const api = axios.create({
+  baseURL: 'https://event-portal-5626.onrender.com/api',
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  }
+});
 
 api.interceptors.request.use((config) => {
   const { token } = useAuthStore.getState();

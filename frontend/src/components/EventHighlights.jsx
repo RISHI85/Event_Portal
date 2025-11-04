@@ -12,7 +12,7 @@ const EventHighlights = () => {
   useEffect(() => {
     const fetchHighlightedEvents = async () => {
       try {
-        const response = await fetchWithLoading('/api/events?limit=6');
+        const response = await fetchWithLoading(`${process.env.REACT_APP_API_URL}/api/events?limit=6`);
         const data = await response.json();
         // Filter for upcoming events or recent events
         const upcomingEvents = data.filter(event => {
@@ -23,7 +23,7 @@ const EventHighlights = () => {
           const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
           return eventDate >= thirtyDaysAgo;
         }).slice(0, 6);
-        
+
         setEvents(upcomingEvents.length > 0 ? upcomingEvents : data.slice(0, 6));
       } catch (error) {
         console.error('Error fetching events:', error);
@@ -88,8 +88,8 @@ const EventHighlights = () => {
               ) : (
                 <div className="highlight-placeholder">
                   <svg width="80" height="80" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2"/>
+                    <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+                    <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2" />
                   </svg>
                 </div>
               )}
@@ -114,8 +114,8 @@ const EventHighlights = () => {
                     {currentEvent.date && (
                       <div className="meta-item">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
-                          <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2"/>
+                          <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+                          <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2" />
                         </svg>
                         {new Date(currentEvent.date).toLocaleDateString('en-US', {
                           month: 'short',
@@ -127,20 +127,20 @@ const EventHighlights = () => {
                     {currentEvent.location && (
                       <div className="meta-item">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="currentColor" strokeWidth="2"/>
-                          <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="2"/>
+                          <path d="M12 22s7-6.5 7-12a7 7 0 1 0-14 0c0 5.5 7 12 7 12z" stroke="currentColor" strokeWidth="2" />
+                          <circle cx="12" cy="10" r="2.5" stroke="currentColor" strokeWidth="2" />
                         </svg>
                         {currentEvent.location}
                       </div>
                     )}
                   </div>
-                  <button 
+                  <button
                     className="highlight-cta"
                     onClick={() => handleEventClick(currentEvent._id)}
                   >
                     View Details
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                     </svg>
                   </button>
                 </div>
@@ -160,8 +160,8 @@ const EventHighlights = () => {
                 ) : (
                   <div className="thumbnail-placeholder">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2"/>
-                      <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2"/>
+                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" strokeWidth="2" />
+                      <path d="M8 3v4M16 3v4M3 10h18" stroke="currentColor" strokeWidth="2" />
                     </svg>
                   </div>
                 )}

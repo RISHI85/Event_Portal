@@ -1,4 +1,4 @@
- 
+
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/authStore';
@@ -24,17 +24,17 @@ const Navbar = () => {
   // no timers/refs to keep navbar behavior unchanged
 
   useEffect(() => {
-    fetchWithLoading('/api/events/departments/list')
+    fetchWithLoading(`${process.env.REACT_APP_API_URL}/api/events/departments/list`)
       .then((r) => r.json())
       .then(setDepartments)
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Load main events and derive Student Chapters (ISTE, ACM, EDC)
   useEffect(() => {
     const loadChapters = async () => {
       try {
-        const res = await fetchWithLoading('/api/events?isMainEvent=true');
+        const res = await fetchWithLoading(`${process.env.REACT_APP_API_URL}/api/events?isMainEvent=true`);
         const data = await res.json();
         const wanted = ['CSI', 'EDC', 'ACM', 'ISTE'];
         const complete = wanted.map((key) => {
@@ -55,7 +55,7 @@ const Navbar = () => {
         setOtherMains(others.map((e) => ({ _id: e._id, name: e.name })));
       } catch (_) {
         // fallback: still show all chapter names
-        setChapters(['CSI','EDC','ACM','ISTE'].map((key)=>({ key, id: undefined })));
+        setChapters(['CSI', 'EDC', 'ACM', 'ISTE'].map((key) => ({ key, id: undefined })));
         setStepconeParentId('');
         setOtherMains([]);
       }
@@ -82,10 +82,10 @@ const Navbar = () => {
     const loadMe = async () => {
       try {
         if (useAuthStore.getState().isAuthenticated && !useAuthStore.getState().user) {
-          const { data } = await api.get('/api/auth/me');
+          const { data } = await api.get(`${process.env.REACT_APP_API_URL}/api/auth/me`);
           useAuthStore.getState().setUser(data);
         }
-      } catch {}
+      } catch { }
     };
     loadMe();
   }, []);
@@ -116,7 +116,7 @@ const Navbar = () => {
 
   return (
     <nav className={`navbar ${scrolled ? 'scrolled' : ''}`}>
-      <div className="nav-left" onClick={() => navigate('/')}> 
+      <div className="nav-left" onClick={() => navigate('/')}>
         <img alt="logo" src="/favicon.ico" className="logo" />
         <span className="brand">EventPortal</span>
       </div>
@@ -140,14 +140,14 @@ const Navbar = () => {
             onMouseEnter={() => setOpen(true)}
             onMouseLeave={() => { setOpen(false); setPanel('root'); }}
           >
-            <button className="nav-link">Events <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginLeft:4}}><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg></button>
+            <button className="nav-link">Events <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginLeft: 4 }}><path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             {open && (
               <div className="mega-dropdown">
                 <div className="mega-section">
                   <div className="mega-header">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="#14b8a6" strokeWidth="2"/>
-                      <path d="M8 3v4M16 3v4M3 10h18" stroke="#14b8a6" strokeWidth="2"/>
+                      <rect x="3" y="5" width="18" height="16" rx="2" stroke="#14b8a6" strokeWidth="2" />
+                      <path d="M8 3v4M16 3v4M3 10h18" stroke="#14b8a6" strokeWidth="2" />
                     </svg>
                     <h4>Stepcone</h4>
                   </div>
@@ -164,29 +164,29 @@ const Navbar = () => {
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="mega-section">
                   <div className="mega-header">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#eab308" strokeWidth="2" strokeLinecap="round"/>
+                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="#eab308" strokeWidth="2" strokeLinecap="round" />
                     </svg>
                     <h4>Student Chapters</h4>
                   </div>
                   <div className="mega-items">
                     {chapters.length === 0 && <span className="mega-item-empty">Coming soon</span>}
                     {chapters.map((c) => (
-                      <a key={c.key} className="mega-item" onClick={() => { if (c.id) { navigate(`/explore?parent=${c.id}`); setOpen(false); }}}>
+                      <a key={c.key} className="mega-item" onClick={() => { if (c.id) { navigate(`/explore?parent=${c.id}`); setOpen(false); } }}>
                         <span className="item-dot"></span>
                         {c.key}
                       </a>
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="mega-section">
                   <div className="mega-header">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="#14b8a6" strokeWidth="2" fill="none"/>
+                      <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" stroke="#14b8a6" strokeWidth="2" fill="none" />
                     </svg>
                     <h4>Others</h4>
                   </div>
